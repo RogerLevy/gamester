@@ -2,7 +2,8 @@
 \  Stack diagram: ( @ - @ ) @ = a block #
 
 \ TODO:
-\ [ ] Bank's cursors should be stored in the image not in the dictionary.
+\ [x] Bank's cursors should be stored in the image not in the dictionary.
+\ [ ] SET needs to work with block refs
 
 [defined] save [if] save [then]
 
@@ -67,6 +68,8 @@ revert
     +cursor
     loop true abort" No more left!"
 ;
+: named  ( bank - <name> adr )
+    one bl parse third >nfa cplace ;
 : <name>  >in @ bl parse rot >in ! ;
 : $  ( - <bank> <name> adr )  \ find a named block
     ' execute >first
@@ -118,7 +121,7 @@ value /assetheader
 
 
 
-( --== scene stuff ==-- )
+( --== sceneï¿½stuff ==-- )
 
 0
     record tilemap-config   ( tilebase, tileset-pic )
@@ -175,10 +178,10 @@ value /scene
 ( --== Engine memory layout ==-- )
 
 : system  0 block ;
-1 bank pics
-2 bank sounds
-3 bank scenes
-4 bank templates  \ a place to store actors for instantiating in scenes
+1 bank pic
+2 bank sound
+3 bank scene
+4 bank template  \ a place to store actors for instantiating in scenes
 8 bank world0     \ the default world
 
 
@@ -188,8 +191,6 @@ value /scene
 
 cell global curScene     \ current scene (block)
 
-
-: scene  scenes  + block ;
 
 
 ( --== Actor stuff ==-- )
@@ -294,10 +295,9 @@ drop
     r> drop
 ;
 
-: add-pic  ( - <path> <name> )
-    pics one to this
+: add-pic  ( - <name> <path> )
+    pic named   to this
     bl parse this path cplace
-    bl parse this >nfa cplace
     16 this subsize !
     this load-pic
 ;
@@ -306,6 +306,7 @@ drop
     handle @   swap 16 /mod 16 16 2*  16 16   0 bblit ;
 
 : draw  ( - )  \ draw current actor
+    hid @ ?exit
     x 2@ at  sub# @ picsrc ref@ draw-tile ;
 
 
@@ -313,7 +314,7 @@ drop
 
 
 : load-pics
-    pics each> load-pic 
+    pic each> load-pic 
 ;
 
 : go
@@ -325,7 +326,7 @@ drop
 load-pics
 go
 
-\ stage one as # pics myconid picsrc ref!
+\ stage named myboy as  $ pic myconid picsrc ref!
 320 240 resolution
 
 cr .( Loaded Blocks4.)
