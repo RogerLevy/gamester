@@ -1,0 +1,44 @@
+
+
+block  ( b# - adr )
+copy   ( src dest count )
+erase  ( b# count )
+
+
+write ( b# count  filename c - )
+read  ( b# count  filename c - ) 
+    class #'s are translated
+    class not found = compile and add to class table
+
+
+
+flush ( - )
+
+
+fill  ( adr #cells n - )
+
+
+
+....
+
+>file ( b# - filename c )
+
+bitmap  ( n - ALLEGRO_BITMAP )
+
+
+classes ( - adr )
+   table pointing to class files and class structs
+   is stored in a range of blocks
+
+
+objects start with a class#.  
+
+
+select ( b# - )
+
+
+image ( n - b# )
+actor ( n - b# )
+
+ 
+
