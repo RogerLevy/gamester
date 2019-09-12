@@ -68,8 +68,8 @@ revert
     +cursor
     loop true abort" No more left!"
 ;
-: named  ( bank - <name> adr )
-    one bl parse third >nfa cplace ;
+: named  ( block - <name> )
+    bl parse rot >nfa cplace ;
 : <name>  >in @ bl parse rot >in ! ;
 : $  ( - <bank> <name> adr )  \ find a named block
     ' execute >first
@@ -121,7 +121,7 @@ value /assetheader
 
 
 
-( --== sceneï¿½stuff ==-- )
+( --== scene stuff ==-- )
 
 0
     record tilemap-config   ( tilebase, tileset-pic )
@@ -296,7 +296,7 @@ drop
 ;
 
 : add-pic  ( - <name> <path> )
-    pic named   to this
+    pic one dup named   to this
     bl parse this path cplace
     16 this subsize !
     this load-pic
@@ -321,12 +321,13 @@ drop
     show>
         black backdrop
         stage each> as draw
+        2 rnd 2 rnd 1 1 2- x 2+!
 ;
 
 load-pics
 go
 
-\ stage named myboy as  $ pic myconid picsrc ref!
+\ stage one named myboy as  $ pic myconid picsrc ref!
 320 240 resolution
 
 cr .( Loaded Blocks4.)
