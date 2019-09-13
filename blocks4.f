@@ -80,7 +80,7 @@ revert
     1023 for
         dup >nfa ccount
         <name> compare 0= if skip unloop ?literal ;then
-        1 +
+        block+
     loop  abort" Not found!"
 ;
 : $  ( - <bank> <name> adr )  \ find a named block
@@ -123,36 +123,6 @@ blockstruct
     record path 7 reserve
     record handle
 value /assetheader
-
-
-
-
-( --== scene stuff ==-- )
-
-0
-    record tilemap-config   ( tilebase, tileset-pic )
-    record parallax         ( x, y )
-    record scroll-offset    ( x, y )
-    record priority
-    record bounds           ( x, y, w, h )
-drop #64 value /layer
-
-blockstruct
-    record world       \ block#
-    record scenemask   \ bitmask that defines which actors will be included  ( TBD )
-    record bgm         \ ( TBD ) probably a general sound #, which can optionally stream a file
-                       \ could add extra params like volume and pitch
-    record scroll
-    drop #128      \ header
-    
-    /layer field layer0 
-    /layer field layer1
-    /layer field layer2
-    /layer field layer3
-value /scene
-
-
-
 
 
 ( ~~~~ data structure explanation ~~~ )
@@ -241,6 +211,22 @@ constant /pic
     handle @   swap 16 /mod 16 16 2*  16 16   0 bblit ;
 
 
+
+( --== Tilemap stuff ==-- )
+
+: draw-tilemap  ( adr pic - )
+    | p |
+    viewh p subsize @ / 1 + for
+        dup a! at@ 2>r
+        vieww p subsize @ / 1 + for
+            @+ p draw-tile p subsize @ 0 +at
+        loop
+        2r> p subsize @ + at
+        512 cells +
+    loop drop
+;
+
+
 ( --== Actor stuff ==-- )
 
 0 value me
@@ -290,7 +276,6 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 ( --== Assumption ==-- )
 
 create mestk  0 , 16 cells allot
-: stage  curScene @ block world ref@ ;
 : as  s" to me" evaluate ; immediate
 : i{ ( actor - ) me mestk dup @ cells + cell+ !  mestk @ 1 + 15 and mestk ! as ;
 : i} ( - ) mestk @ 1 - 15 and mestk !  mestk dup @ cells + cell+ @ as ; 
@@ -370,6 +355,28 @@ create mestk  0 , 16 cells allot
 
 ( --== Scene stuff ==-- )
 
+0
+    record tilemap-config   ( block#, tileset-pic )
+    record parallax         ( x, y )
+    record scroll-offset    ( x, y )
+    record priority         \ TBD
+    record bounds           ( x, y, w, h ) \ TBD
+drop #64 value /layer
+
+blockstruct
+    record world       \ block#
+    record scenemask   \ bitmask that defines which actors will be included  ( TBD )
+    record bgm         \ ( TBD ) probably a general sound #, which can optionally stream a file
+                       \ could add extra params like volume and pitch
+    record scroll
+    drop #128      \ header
+    
+    /layer field layer0 
+    /layer field layer1
+    /layer field layer2
+    /layer field layer3
+value /scene
+
 : init-scene ( world scene# - ) 
     world ref!
 ;
@@ -388,6 +395,21 @@ create mestk  0 , 16 cells allot
     s1 world ref@ s2 world ref@ 1024 copy  \ copy the world
     s2 dup world ref@ filter-scene  \ filter out excluded actors
 ;
+: draw-layer ( scrollx scrolly layer - )
+    dup tilemap-config a! @+ block @+ dup subsize @
+        swap block | pic tsize baseadr |
+    >r
+    ( scrollx scrolly ) r@ parallax 2@ 2*  r@ scroll-offset 2@ 2+
+        2dup tsize dup 2mod 2negate at
+        tsize dup 2/ 512 * swap + cells baseadr + pic draw-tilemap
+    r> drop
+;
+: draw-scene ( scene - )
+    >r
+    r@ scroll 2@ r@ layer0 draw-layer  \ others TBD    
+    r> drop
+;
+: stage  curScene ref@ world ref@ ;
 
 
 ( --== Some startup stuff ==-- )
@@ -403,14 +425,13 @@ create mestk  0 , 16 cells allot
     load-roles
     show>
         black backdrop
+        curScene ref@ draw-scene
         stage each> as
         draw act
-        \ 2 rnd 2 rnd 1 1 2- x 2+!
 ;
 
 go
 
-\ stage one named myboy as  $ pic myconid picsrc ref!
 320 240 resolution
 
 cr .( Loaded Blocks4.)
