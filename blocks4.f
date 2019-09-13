@@ -204,6 +204,43 @@ cell global curScene     \ current scene (block)
 
 
 
+( --== Pic stuff ==-- )
+
+/assetheader
+    record subsize
+    0 field animations
+constant /pic
+
+: animation  ( n pic - adr )  animations swap #16 * + ;
+: set-animation  ( - <anim#> <frame> <frame> <frame> ... )
+    num this animation dup a!>
+    0 c!+  \ initialize length
+    decimal
+    begin /source nip while
+        <word> evaluate c!+
+        #1 over c+!
+    repeat
+    drop
+    fixed
+;
+
+: load-pic  ( pic - )
+    >r
+        r@ path ccount >dataPath zstring al_load_bitmap  r@ handle !
+    r> drop
+;
+
+: add-pic  ( - <name> <path> )
+    pic one dup named   to this
+    <word> this path cplace
+    16 this subsize !
+    this load-pic
+;
+
+: draw-tile  ( n pic - )  \ only 16x16 supported for now, and no flipping
+    handle @   swap 16 /mod 16 16 2*  16 16   0 bblit ;
+
+
 ( --== Actor stuff ==-- )
 
 0 value me
@@ -311,6 +348,26 @@ create mestk  0 , 16 cells allot
     this load-role
 ;
 
+( --== Actor rendering ==-- )
+
+: sub@
+    anim# @ >pic ref@ animation >r
+    r@ c@ if
+        r@ #1 + animctr @ 1i r@ c@ mod + c@ 1p sub# !
+        rate @ animctr +!
+    then
+    r> drop
+    sub# @
+;
+
+: draw  ( - )  \ draw current actor
+    hid @ ?exit
+    x 2@ at  sub@ >pic ref@ draw-tile ;
+
+: animate  ( n speed - )
+    rate ! 0 animctr ! anim# ! ;
+
+
 ( --== Scene stuff ==-- )
 
 : init-scene ( world scene# - ) 
@@ -332,61 +389,6 @@ create mestk  0 , 16 cells allot
     s2 dup world ref@ filter-scene  \ filter out excluded actors
 ;
 
-
-
-( --== Pic stuff ==-- )
-
-/assetheader
-    record subsize
-    0 field animations
-constant /pic
-
-: animation  ( n pic - adr )  animations swap #16 * + ;
-: set-animation  ( - <anim#> <frame> <frame> <frame> ... )
-    num this animation dup a!>
-    0 c!+  \ initialize length
-    decimal
-    begin /source nip while
-        <word> evaluate c!+
-        #1 over c+!
-    repeat
-    drop
-    fixed
-;
-
-: load-pic  ( pic - )
-    >r
-        r@ path ccount >dataPath zstring al_load_bitmap  r@ handle !
-    r> drop
-;
-
-: add-pic  ( - <name> <path> )
-    pic one dup named   to this
-    <word> this path cplace
-    16 this subsize !
-    this load-pic
-;
-
-: draw-tile  ( n pic - )  \ only 16x16 supported for now, and no flipping
-    handle @   swap 16 /mod 16 16 2*  16 16   0 bblit ;
-
-
-: sub@
-    anim# @ >pic ref@ animation >r
-    r@ c@ if
-        r@ #1 + animctr @ 1i r@ c@ mod + c@ 1p sub# !
-        rate @ animctr +!
-    then
-    r> drop
-    sub# @
-;
-
-: draw  ( - )  \ draw current actor
-    hid @ ?exit
-    x 2@ at  sub@ >pic ref@ draw-tile ;
-
-: animate  ( n speed - )
-    rate ! 0 animctr ! anim# ! ;
 
 ( --== Some startup stuff ==-- )
 
