@@ -12,6 +12,10 @@ depend ramen/lib/a.f
 
 : |  postpone locals| ; immediate
 
+\ TBD: PROJECT needs to be cleared in exported games.
+: >projectPath  project count 2swap strjoin ;
+: >dataPath     project count s" data/" strjoin 2swap strjoin ;
+: <word>   bl word ccount ;
 
 ( --== block image ==-- )
 
@@ -44,7 +48,7 @@ revert
 
 : field     create over , + does> @ + ;
 : record    #16 field ;
-: skip      bl parse 2drop ;
+: skip      <word> 2drop ;
 : reserve       #16 * + ;
 : blockstruct  0 1 reserve ;
 : \record    1 reserve skip ;
@@ -69,16 +73,18 @@ revert
     loop true abort" No more left!"
 ;
 : named  ( block - <name> )
-    bl parse rot >nfa cplace ;
-: <name>  >in @ bl parse rot >in ! ;
-: $  ( - <bank> <name> adr )  \ find a named block
-    ' execute >first
+    <word> rot >nfa cplace ;
+: <name>  >in @ <word> rot >in ! ;
+: ($)  ( bank - <name> adr )
+    >first
     1023 for
         dup >nfa ccount
         <name> compare 0= if skip unloop ?literal ;then
         1 +
     loop  abort" Not found!"
-; immediate
+;
+: $  ( - <bank> <name> adr )  \ find a named block
+    ' execute ($) ; immediate
 : clear-bank  ( bank - )
     header 0 over !  \ reset cursor
      >first 1023 blocks erase ;
@@ -95,11 +101,11 @@ revert
 ( --== basic editing tools ==-- )
 
 0 value this
-: num  bl parse evaluate ;
+: num  <word> evaluate ;
 : edit  ( adr - )    to this   this #128 dump ;
 : set  this offset+ a!>
     begin /source nip while
-        bl parse over c@ [char] " = if
+        <word> over c@ [char] " = if
             #1 /string #1 - a@ cplace
         else
             evaluate !+
@@ -169,11 +175,15 @@ value /scene
 
 ( A world is a bank of actors. )
 
-( There are a maximum of 1024 of the following: )
+( There are a maximum of 1023 of the following: )
 ( - Pics )
 ( - Scenes )
 ( - Sounds, including BGM's )
+( - Roles )
+( - Templates )
+( - Actors in a world )
 
+( The number of available banks is dependent on the image size. )
 
 ( --== Engine memory layout ==-- )
 
@@ -181,8 +191,9 @@ value /scene
 1 bank pic
 2 bank sound
 3 bank scene
-4 bank template  \ a place to store actors for instantiating in scenes
-8 bank world0     \ the default world
+4 bank template  \ a place to store actors for instantiating multiple times in different worlds
+5 bank role      \ like classes, but just for actors
+8 bank world0    \ the default world
 
 
 0 value /system
@@ -209,12 +220,14 @@ var x
 var y
 var vx
 var vy
+var woke    \ if woke is off, state isn't executed.
+var hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solid hitbox) TBD
+var >role
 var state#
-var hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solid hitbox)
-var picsrc
+var >pic
 var sub#
-var anim#
-var frame#
+var anim#   
+var animctr
 var rate    \ animation speed
 var hp
 var maxhp
@@ -233,8 +246,8 @@ var sbh
 #512 to /actor   \ reserve 512 bytes
 
 \ user variables:
-var p1 var p2 var p3 var p4 var p5 var p6 var p7 var p8
-var p9 var p10 var p11 var p12 var p13 var p14 var p15 var p16
+var var1 var var2 var var3 var var4 var var5 var var6 var var7 var var8
+var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 
 
 ( --== Assumption ==-- )
@@ -247,6 +260,56 @@ create mestk  0 , 16 cells allot
 : {  ( actor - ) state @ if s" me >r as" evaluate else  i{  then ; immediate
 : }  ( - ) state @ if s" r> as" evaluate else  i}  then ; immediate
 
+
+( --== Role stuff ==-- )
+
+
+/assetheader value /roleheader
+#512 0 field vectors drop
+1 value nextVector#  \ 0 state is NOOP
+
+
+: runvec  ( ... n - ... )   cells >role ref@ vectors + @ execute ;
+: act  woke @ -exit  state# @ runvec ;
+: already  defined if >body cell+ @ $01234567 = ;then  drop false ;
+: (?action)
+    >in @ already if drop ;then
+        >in ! create nextVector# , $01234567 , 1 +to nextVector#
+        does>  @ runvec
+;
+: ?action  >in @ (?action) >in ! ;
+: (?state)
+    >in @ already if drop ;then
+        >in ! create nextVector# , $01234567 , 1 +to nextVector#
+        does>  woke on @ dup state# ! runvec
+;
+: ?state >in @ (?state) >in ! ;
+: ?alias  ( xt - xt ) \ if alias return the XT it points to
+    dup >body cell+ @ $C0FFEE = if @ then
+;
+: action: ( - <role> <name/alias> ...code... ; ) ( ... - ... ) \ doesn't set state#
+    role ($) 
+    ?action  \ create if doesn't exist
+    vectors ' ?alias >body @ cells + :noname swap ! 
+;
+: state:  ( - <role> <name/alias> ...code... ; ) ( - ) \ sets state#
+    role ($) 
+    ?state  \ create if doesn't exist
+    vectors ' ?alias >body @ cells + :noname swap ! 
+;
+: alias:  ( - <src> <name> )
+    ' create , $C0FFEE ,
+;
+: load-role  ( role - )
+    >r
+        r@ path ccount >projectPath included
+    r> drop
+;
+: add-role ( - <name> <path> )
+    role one dup named   to this
+    <word> this path cplace
+    this load-role
+;
 
 ( --== Scene stuff ==-- )
 
@@ -275,29 +338,31 @@ create mestk  0 , 16 cells allot
 
 /assetheader
     record subsize
-    dup constant animations
-drop
+    0 field animations
+constant /pic
 
-: animation  ( n pic@ - adr count )  block animations swap #16 * + ccount ;
+: animation  ( n pic - adr )  animations swap #16 * + ;
 : set-animation  ( - <anim#> <frame> <frame> <frame> ... )
-    num this animation a!>
-    0 c!+
+    num this animation dup a!>
+    0 c!+  \ initialize length
+    decimal
     begin /source nip while
-        bl parse evaluate 1i c!+
+        <word> evaluate c!+
         #1 over c+!
     repeat
     drop
+    fixed
 ;
 
 : load-pic  ( pic - )
     >r
-        r@ path ccount zstring al_load_bitmap  r@ handle !
+        r@ path ccount >dataPath zstring al_load_bitmap  r@ handle !
     r> drop
 ;
 
 : add-pic  ( - <name> <path> )
     pic one dup named   to this
-    bl parse this path cplace
+    <word> this path cplace
     16 this subsize !
     this load-pic
 ;
@@ -305,26 +370,42 @@ drop
 : draw-tile  ( n pic - )  \ only 16x16 supported for now, and no flipping
     handle @   swap 16 /mod 16 16 2*  16 16   0 bblit ;
 
+
+: sub@
+    anim# @ >pic ref@ animation >r
+    r@ c@ if
+        r@ #1 + animctr @ 1i r@ c@ mod + c@ 1p sub# !
+        rate @ animctr +!
+    then
+    r> drop
+    sub# @
+;
+
 : draw  ( - )  \ draw current actor
     hid @ ?exit
-    x 2@ at  sub# @ picsrc ref@ draw-tile ;
+    x 2@ at  sub@ >pic ref@ draw-tile ;
 
+: animate  ( n speed - )
+    rate ! 0 animctr ! anim# ! ;
 
 ( --== Some startup stuff ==-- )
 
+(?action) start
 
-: load-pics
-    pic each> load-pic 
-;
+: load-pics    pic each> load-pic ;
+: load-roles   role each> load-role ;
+: restart-all  stage each> as start ;
 
 : go
+    load-pics
+    load-roles
     show>
         black backdrop
-        stage each> as draw
-        2 rnd 2 rnd 1 1 2- x 2+!
+        stage each> as
+        draw act
+        \ 2 rnd 2 rnd 1 1 2- x 2+!
 ;
 
-load-pics
 go
 
 \ stage one named myboy as  $ pic myconid picsrc ref!
