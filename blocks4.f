@@ -25,6 +25,7 @@ create blkpath  #256 allot
 s" prg/blocks/test.blk" blkpath place
 : revert  blkpath count image /image @file ;
 : save    image /image blkpath count file! ;
+:make bye   save  al_uninstall_system  0 ExitProcess ;
 
 revert 
 
@@ -41,8 +42,8 @@ revert
 : >nfa   ;
 : copy  blocks move ;
 : delete  1 blocks erase ;
-: ref!  swap block> swap ! ;
-: ref@  @ block ;
+: >!  swap block> swap ! ;
+: @>  @ block ;
 
 ( --== field stuff ==-- )
 
@@ -83,8 +84,8 @@ revert
         block+
     loop  abort" Not found!"
 ;
-: $  ( - <bank> <name> adr )  \ find a named block
-    ' execute ($) ; immediate
+: $(  ( - <bank> <name> adr )  \ find a named block; ex: $( pic myconid )
+    ' execute ($) skip ; immediate
 : clear-bank  ( bank - )
     header 0 over !  \ reset cursor
      >first 1023 blocks erase ;
@@ -244,7 +245,7 @@ var y
 var vx
 var vy
 var woke    \ if woke is off, state isn't executed.
-var hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solid hitbox) TBD
+var hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solid hitbox)
 var >role
 var state#
 var >pic
@@ -283,6 +284,11 @@ create mestk  0 , 16 cells allot
 : }  ( - ) state @ if s" r> as" evaluate else  i}  then ; immediate
 
 
+0 value xt
+: shout  ( xt world )
+    swap to xt each> as xt execute ;
+
+
 ( --== Role stuff ==-- )
 
 
@@ -290,8 +296,8 @@ create mestk  0 , 16 cells allot
 #512 0 field vectors drop
 1 value nextVector#  \ 0 state is NOOP
 
-
-: runvec  ( ... n - ... )   cells >role ref@ vectors + @ execute ;
+: vexec  swap cells + @ execute ;
+: runvec  ( ... n - ... )   >role @> vectors vexec ;
 : act  woke @ -exit  state# @ runvec ;
 : already  defined if >body cell+ @ $01234567 = ;then  drop false ;
 : (?action)
@@ -336,7 +342,7 @@ create mestk  0 , 16 cells allot
 ( --== Actor rendering ==-- )
 
 : sub@
-    anim# @ >pic ref@ animation >r
+    anim# @ >pic @> animation >r
     r@ c@ if
         r@ #1 + animctr @ 1i r@ c@ mod + c@ 1p sub# !
         rate @ animctr +!
@@ -345,9 +351,14 @@ create mestk  0 , 16 cells allot
     sub# @
 ;
 
+create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cyan , ' pink , 
+
+: placeholder  ( - )
+    x 2@ sbx 2@ 2+ at  id @ 8 mod colors vexec  sbw 2@ rectf ;
+
 : draw  ( - )  \ draw current actor
-    hid @ ?exit
-    x 2@ at  sub@ >pic ref@ draw-tile ;
+    hid @ if  placeholder  ;then
+    x 2@ at  sub@ >pic @> draw-tile ;
 
 : animate  ( n speed - )
     rate ! 0 animctr ! anim# ! ;
@@ -357,6 +368,8 @@ create mestk  0 , 16 cells allot
 
 0
     record tilemap-config   ( block#, tileset-pic )
+    : tilemap-block#  tilemap-config ;
+    : tileset-pic     tilemap-config cell+ ;
     record parallax         ( x, y )
     record scroll-offset    ( x, y )
     record priority         \ TBD
@@ -378,7 +391,7 @@ blockstruct
 value /scene
 
 : init-scene ( world scene# - ) 
-    world ref!
+    world >!
 ;
 : filter-scene  ( scene actor-bank - )  \ removes excluded actors 
     | b s |
@@ -392,8 +405,8 @@ value /scene
     s2 world @
         s1 s2 1 copy  \ copy the headers
     s2 world !
-    s1 world ref@ s2 world ref@ 1024 copy  \ copy the world
-    s2 dup world ref@ filter-scene  \ filter out excluded actors
+    s1 world @> s2 world @> 1024 copy  \ copy the world
+    s2 dup world @> filter-scene  \ filter out excluded actors
 ;
 : draw-layer ( scrollx scrolly layer - )
     dup tilemap-config a! @+ block @+ block dup subsize @
@@ -409,7 +422,7 @@ value /scene
     r@ scroll 2@ r@ layer0 draw-layer  \ others TBD    
     r> drop
 ;
-: stage  curScene ref@ world ref@ ;
+: stage  curScene @> world @> ;
 
 
 ( --== Some startup stuff ==-- )
@@ -418,14 +431,13 @@ value /scene
 
 : load-pics    pic each> load-pic ;
 : load-roles   role each> load-role ;
-: restart-all  stage each> as start ;
 
 : go
     load-pics
     load-roles
     show>
         black backdrop
-        curScene ref@ draw-scene
+        curScene @> draw-scene
         stage each> as
         draw act
 ;
