@@ -84,7 +84,9 @@ revert
     >first
     1023 for
         dup >nfa ccount
-        <name> compare 0= if skip unloop ?literal ;then
+        <name> compare 0= if skip unloop
+            state @ if  block> postpone literal postpone block  then
+        ;then
         block+
     loop  abort" Not found!"
 ;
