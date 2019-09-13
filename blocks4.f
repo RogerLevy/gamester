@@ -396,8 +396,8 @@ value /scene
     s2 dup world ref@ filter-scene  \ filter out excluded actors
 ;
 : draw-layer ( scrollx scrolly layer - )
-    dup tilemap-config a! @+ block @+ dup subsize @
-        swap block | pic tsize baseadr |
+    dup tilemap-config a! @+ block @+ block dup subsize @
+        | tsize pic baseadr |
     >r
     ( scrollx scrolly ) r@ parallax 2@ 2*  r@ scroll-offset 2@ 2+
         2dup tsize dup 2mod 2negate at

@@ -9,7 +9,7 @@ add-pic overworld overworld-tiles.png
 add-role myconid myconid.f
 
 $ pic myconid to this
-set-animation 1   0 1 2 3
+    set-animation 1   0 1 2 3
 
 *myconid me named myboy
 
@@ -18,9 +18,9 @@ set-animation 1   0 1 2 3
 mytilemap garbage
 
 $ scene default layer0 to this
-mytilemap this tilemap-config ref!
-$ pic overworld this tilemap-config cell+ ref!
-
+    mytilemap this tilemap-config ref!
+    $ pic overworld this tilemap-config cell+ ref!
+    1 1 this parallax 2!
 
 
 save
