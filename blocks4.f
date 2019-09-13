@@ -10,12 +10,16 @@
 empty
 depend ramen/lib/a.f
 
+( --== Utilities ==-- )
+
 : |  postpone locals| ; immediate
+: <word>   bl word ccount ;
+: echo  cr 2dup type ;
+: 4. 2swap 2. 2. ;
 
 \ TBD: PROJECT needs to be cleared in exported games.
-: >projectPath  project count 2swap strjoin ;
 : >dataPath     project count s" data/" strjoin 2swap strjoin ;
-: <word>   bl word ccount ;
+: >rolePath     project count s" roles/" strjoin 2swap strjoin ;
 
 ( --== block image ==-- )
 
@@ -113,7 +117,6 @@ revert
         then  
     repeat 
 ;
-: 4. 2swap 2. 2. ;
 : what's  this offset+ dup 4@ 4. #16 dump ;
 : print  this offset+ ccount type ;
 
@@ -175,6 +178,7 @@ cell global curScene     \ current scene (block)
 
 
 
+
 ( --== Pic stuff ==-- )
 
 /assetheader
@@ -197,7 +201,7 @@ constant /pic
 
 : load-pic  ( pic - )
     >r
-        r@ path ccount >dataPath zstring al_load_bitmap  r@ handle !
+        r@ path ccount >dataPath echo zstring al_load_bitmap  r@ handle !
     r> drop
 ;
 
@@ -232,6 +236,7 @@ constant /pic
 
 0 value me
 blockstruct value /actor  \ space for mark etc
+create mestk  0 , 16 cells allot
 
 : var  /actor cell field to /actor  does>  @ me + ;
 
@@ -276,21 +281,29 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 
 ( --== Assumption ==-- )
 
-create mestk  0 , 16 cells allot
 : as  s" to me" evaluate ; immediate
 : i{ ( actor - ) me mestk dup @ cells + cell+ !  mestk @ 1 + 15 and mestk ! as ;
 : i} ( - ) mestk @ 1 - 15 and mestk !  mestk dup @ cells + cell+ @ as ; 
-: {  ( actor - ) state @ if s" me >r as" evaluate else  i{  then ; immediate
-: }  ( - ) state @ if s" r> as" evaluate else  i}  then ; immediate
+: {  ( actor - ) state @  if s" me >r as" evaluate else  i{  then ; immediate
+: }  ( - ) state @ if  s" r> as" evaluate else  i}  then ; immediate
 
+
+: instance  ( template world - actor )
+    one {
+        me 1 copy
+        $ff me !   \ invalidates the name
+        at@ x 2!
+    me }
+;
+
+
+( --== World stuff ==-- )
 
 0 value xt
 : shout  ( xt world )
     swap to xt each> as xt execute ;
 
-
 ( --== Role stuff ==-- )
-
 
 /assetheader value /roleheader
 #512 0 field vectors drop
@@ -300,6 +313,7 @@ create mestk  0 , 16 cells allot
 : runvec  ( ... n - ... )   >role @> vectors vexec ;
 : act  woke @ -exit  state# @ runvec ;
 : already  defined if >body cell+ @ $01234567 = ;then  drop false ;
+: rolefield  create /roleheader , +to /roleheader does> @ + ;
 : (?action)
     >in @ already if drop ;then
         >in ! create nextVector# , $01234567 , 1 +to nextVector#
@@ -330,13 +344,16 @@ create mestk  0 , 16 cells allot
 ;
 : load-role  ( role - )
     >r
-        r@ path ccount >projectPath included
+        r@ path ccount >rolePath included
     r> drop
 ;
 : add-role ( - <name> <path> )
     role one dup named   to this
     <word> this path cplace
     this load-role
+;
+: add-template  ( - <name> )
+    template one dup as  named  
 ;
 
 ( --== Actor rendering ==-- )
@@ -368,7 +385,7 @@ create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cy
 
 0
     record tilemap-config   ( block#, tileset-pic )
-    : tilemap-block#  tilemap-config ;
+    : tilemap-block   tilemap-config ;
     : tileset-pic     tilemap-config cell+ ;
     record parallax         ( x, y )
     record scroll-offset    ( x, y )
@@ -411,10 +428,10 @@ value /scene
 : draw-layer ( scrollx scrolly layer - )
     dup tilemap-config a! @+ block @+ block dup subsize @
         | tsize pic baseadr |
-    >r
+    ( layer ) >r
     ( scrollx scrolly ) r@ parallax 2@ 2*  r@ scroll-offset 2@ 2+
         2dup tsize dup 2mod 2negate at
-        tsize dup 2/ 512 * swap + cells baseadr + pic draw-tilemap
+        tsize dup 2/ 2pfloor 512 * + cells baseadr + pic draw-tilemap
     r> drop
 ;
 : draw-scene ( scene - )
@@ -423,7 +440,27 @@ value /scene
     r> drop
 ;
 : stage  curScene @> world @> ;
+: layer  ( scene n - layer )  >r layer0 r> /layer * + ;
+: init-layer  ( tilemap tileset-pic scene n - )
+    layer >r
+        r@ tileset-pic >! r@ tilemap-block >!
+        1 1 r@ parallax 2!
+        0 0 r@ scroll-offset 2!
+    r> drop
+;
 
+( --== Some shorthands ==-- )
+
+: t( ( - <name> <> template )   \ ex: t( myconid )
+    template ($) skip ; immediate
+: pic( ( - <name> <> pic )     \ ex: pic( myconid )
+    pic ($) skip ; immediate
+: scene( ( - <name> <> scene )   \ ex: scene( default )
+    scene ($) skip ; immediate
+: sound( ( - <name> <> sound )   \ ex: sound( bang )
+    sound ($) skip ; immediate
+: role( ( - <name> <> role )   \ ex: role( myconid )
+    role ($) skip ; immediate
 
 ( --== Some startup stuff ==-- )
 
