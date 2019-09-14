@@ -14,6 +14,7 @@ depend ramen/lib/a.f
 
 : |  postpone locals| ; immediate
 : <word>   bl word ccount ;
+: <name>  >in @ <word> rot >in ! ;
 : echo  cr 2dup type ;
 : 4. 2swap 2. 2. ;
 
@@ -79,8 +80,8 @@ revert
 ;
 : named  ( block - <name> )
     <word> rot >nfa cplace ;
-: <name>  >in @ <word> rot >in ! ;
-: ($)  ( bank - <name> adr )
+
+: (?$)  ( bank - <name> adr|0 )
     >first
     1023 for
         dup >nfa ccount
@@ -88,8 +89,10 @@ revert
             state @ if  block> postpone literal postpone block  then
         ;then
         block+
-    loop  abort" Not found!"
+    loop   drop  0
 ;
+: ($)  (?$) dup 0= abort" Not found!" ;
+
 : $(  ( - <bank> <name> adr )  \ find a named block; ex: $( pic myconid )
     ' execute ($) skip ; immediate
 : clear-bank  ( bank - )
@@ -222,7 +225,7 @@ constant /pic
 ( --== Tilemap stuff ==-- )
 
 : draw-tilemap  ( adr pic - )
-    | p |
+    | p |  hold>
     viewh p subsize @ / 1 + for
         dup a! at@ 2>r
         vieww p subsize @ / 1 + for
@@ -358,30 +361,6 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
     template one dup as  named  
 ;
 
-( --== Actor rendering ==-- )
-
-: sub@
-    anim# @ >pic @> animation >r
-    r@ c@ if
-        r@ #1 + animctr @ 1i r@ c@ mod + c@ 1p sub# !
-        rate @ animctr +!
-    then
-    r> drop
-    sub# @
-;
-
-create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cyan , ' pink , 
-
-: placeholder  ( - )
-    x 2@ sbx 2@ 2+ at  id @ 8 mod colors vexec  sbw 2@ rectf ;
-
-: draw  ( - )  \ draw current actor
-    hid @ if  placeholder  ;then
-    x 2@ at  sub@ >pic @> draw-tile ;
-
-: animate  ( n speed - )
-    rate ! 0 animctr ! anim# ! ;
-
 
 ( --== Scene stuff ==-- )
 
@@ -451,7 +430,31 @@ value /scene
     r> drop
 ;
 
-( --== Some shorthands ==-- )
+( --== Actor rendering ==-- )
+
+: sub@
+    anim# @ >pic @> animation >r
+    r@ c@ if
+        r@ #1 + animctr @ 1i r@ c@ mod + c@ 1p sub# !
+        rate @ animctr +!
+    then
+    r> drop
+    sub# @
+;
+
+create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cyan , ' pink , 
+
+: placeholder  ( - )
+    x 2@ sbx 2@ 2+ at  id @ 8 mod colors vexec  sbw 2@ rectf ;
+
+: draw  ( - )  \ draw current actor
+    hid @ if  placeholder  ;then
+    x 2@  curscene @> scroll 2@ 2-  at  sub@ >pic @> draw-tile ;
+
+: animate  ( n speed - )
+    rate ! 0 animctr ! anim# ! ;
+
+( --== Additional commands ==-- )
 
 : t( ( - <name> <> template )   \ ex: t( myconid )
     template ($) skip ; immediate
@@ -463,10 +466,22 @@ value /scene
     sound ($) skip ; immediate
 : role( ( - <name> <> role )   \ ex: role( myconid )
     role ($) skip ; immediate
+: import  ( - <name> <scriptpath> )
+    >in @  add-role  >in !
+    >in @  add-template  >in !
+    >in @  role ($) >role >!  >in ! 
+    >in @  pic (?$) ?dup if  >pic >!  then  >in !
+    skip skip
+;
+: add-actor  ( - <template> )
+    template ($)  stage instance as ;
+
 
 ( --== Some startup stuff ==-- )
 
 (?action) start
+
+: draws  each> as draw act ;
 
 : load-pics    pic each> load-pic ;
 : load-roles   role each> load-role ;
@@ -476,9 +491,9 @@ value /scene
     load-roles
     show>
         black backdrop
+        
         curScene @> draw-scene
-        stage each> as
-        draw act
+        me >r stage draws r> as
 ;
 
 go
