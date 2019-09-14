@@ -369,9 +369,10 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
     : tileset-pic     tilemap-config cell+ ;
     record parallax         ( x, y )
     record scroll-offset    ( x, y )
-    record priority         \ TBD
-    record bounds           ( x, y, w, h ) \ TBD
-drop #64 value /layer
+    record bounds           ( x, y, w, h ) 
+    record layerctl1
+    record layerctl2
+value /layer  
 
 blockstruct
     record >stage      \ block#
@@ -379,8 +380,8 @@ blockstruct
     record bgm         \ ( TBD ) probably a general sound #, which can optionally stream a file
                        \ could add extra params like volume and pitch
     record scroll
-    drop #128      \ header
-    
+value /sceneheader
+#256
     /layer field layer0 
     /layer field layer1
     /layer field layer2
@@ -420,11 +421,18 @@ layer-template to this
     s1 >stage @> >first   s2 >stage @> >first   1023 copy  \ copy the actors
     s2 dup >stage @> filter-stage  \ filter out excluded actors
 ;
+: limit-scroll  ( scrollx scrolly layer - scrollx scrolly )
+    >r
+    r@ bounds xy@ 2max
+    r@ bounds wh@ viewwh 2- 2min
+    r> drop
+;
 : draw-layer ( scrollx scrolly layer - )
     dup tilemap-config a! @+ block @+ block dup subsize @
         | tsize pic baseadr |
     ( layer ) >r
     ( scrollx scrolly ) r@ parallax 2@ 2*  r@ scroll-offset 2@ 2+
+        r@ limit-scroll
         2dup tsize dup 2mod 2negate at
         tsize dup 2/ 2pfloor 512 * + cells baseadr + pic draw-tilemap
     r> drop
