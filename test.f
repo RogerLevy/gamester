@@ -3,10 +3,9 @@
 \ with GUI-based tools.
 
 image /image erase
-scene one named default
-scene( default ) curScene >!
 
-world0 curscene @> world >!
+stage0 init-stage
+stage0 curStage >!
 
 add-pic myconid myconids.png
 add-pic overworld overworld-tiles.png
@@ -25,9 +24,8 @@ pic( myconid ) to this
 
 mytilemap garbage
 
-mytilemap pic( overworld ) curscene @> 0 init-layer
+mytilemap pic( overworld ) stage 0 init-layer
 
 100 100 at
-add-actor myconid  me named myboy
-add-actor camera   me named camera
-start
+add-actor myconid  named myboy
+add-actor camera   named camera     start

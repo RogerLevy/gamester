@@ -152,7 +152,7 @@ value /assetheader
 ( Actually you can define an animation that's longer than 14, it just will spill }
 ( into the next animation slot, making it unusable for its own animation. )
 
-( A world is a bank of actors. )
+( A stage is a scene attached to a bank of actors. )
 
 ( There are a maximum of 1023 of the following: )
 ( - Pics )
@@ -160,7 +160,7 @@ value /assetheader
 ( - Sounds, including BGM's )
 ( - Roles )
 ( - Templates )
-( - Actors in a world )
+( - Actors in a stage )
 
 ( The number of available banks is dependent on the image size. )
 
@@ -170,17 +170,16 @@ value /assetheader
 1 bank pic
 2 bank sound
 3 bank scene
-4 bank template  \ a place to store actors for instantiating multiple times in different worlds
+4 bank template  \ a place to store actors for instantiating multiple times in different stages
 5 bank role      \ like classes, but just for actors
-8 bank world0    \ the default world
+8 bank stage0    \ the default stage
 
 
 0 value /system
 
 : global  /system swap field to /system does> @ system + ;
 
-cell global curScene     \ current scene (block)
-
+cell global curStage     \ current stage (block)
 
 
 
@@ -293,7 +292,7 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 : }  ( - ) state @ if  s" r> as" evaluate else  i}  then ; immediate
 
 
-: instance  ( template world - actor )
+: instance  ( template stage - actor )
     one {
         me 1 copy
         $ff me !   \ invalidates the name
@@ -302,10 +301,10 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 ;
 
 
-( --== World stuff ==-- )
+( --== Stage stuff ==-- )
 
 0 value xt
-: shout  ( xt world )
+: shout  ( xt stage )
     swap to xt each> as xt execute ;
 
 ( --== Role stuff ==-- )
@@ -375,8 +374,8 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 drop #64 value /layer
 
 blockstruct
-    record world       \ block#
-    record scenemask   \ bitmask that defines which actors will be included  ( TBD )
+    record >stage      \ block#
+    record scenemask   \ bitmask that defines which actors will be copied when loading to this scene
     record bgm         \ ( TBD ) probably a general sound #, which can optionally stream a file
                        \ could add extra params like volume and pitch
     record scroll
@@ -388,23 +387,38 @@ blockstruct
     /layer field layer3
 value /scene
 
-: init-scene ( world scene# - ) 
-    world >!
+create layer-template  /layer /allot
+layer-template to this
+    1 1 this parallax 2!
+    0 0 8192 8192 this bounds 4!
+    
+
+: init-scene ( stage scene - ) 
+    >r
+    r@ >stage >!
+    layer-template r@ layer0 /layer move
+    layer-template r@ layer1 /layer move
+    layer-template r@ layer2 /layer move
+    layer-template r@ layer3 /layer move
+    r> drop 
 ;
-: filter-scene  ( scene actor-bank - )  \ removes excluded actors 
+: init-stage ( stage - )
+    dup init-scene
+;
+: filter-stage  ( src-scene stage - )  \ removes excluded actors 
     | b s |
     b each>
     scenebits @ s scenemask @ and 0= if
         me delete
     then
 ;
-: load-scene  ( src-scene dest-scene - )
+: load-scene  ( scene dest-stage - )
     | s2 s1 |
-    s2 world @
-        s1 s2 1 copy  \ copy the headers
-    s2 world !
-    s1 world @> s2 world @> 1024 copy  \ copy the world
-    s2 dup world @> filter-scene  \ filter out excluded actors
+    s2 >stage @       \ the stage's stage pointer can't change 
+        s1 s2 1 copy  \ copy the header
+    s2 >stage !
+    s1 >stage @> >first   s2 >stage @> >first   1023 copy  \ copy the actors
+    s2 dup >stage @> filter-stage  \ filter out excluded actors
 ;
 : draw-layer ( scrollx scrolly layer - )
     dup tilemap-config a! @+ block @+ block dup subsize @
@@ -420,7 +434,7 @@ value /scene
     r@ scroll 2@ r@ layer0 draw-layer  \ others TBD    
     r> drop
 ;
-: stage  curScene @> world @> ;
+: stage  curStage @> ;
 : layer  ( scene n - layer )  >r layer0 r> /layer * + ;
 : init-layer  ( tilemap tileset-pic scene n - )
     layer >r
@@ -449,7 +463,7 @@ create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cy
 
 : draw  ( - )  \ draw current actor
     hid @ if  placeholder  ;then
-    x 2@  curscene @> scroll 2@ 2-  at  sub@ >pic @> draw-tile ;
+    x 2@  curStage @> scroll 2@ 2-  at  sub@ >pic @> draw-tile ;
 
 : animate  ( n speed - )
     rate ! 0 animctr ! anim# ! ;
@@ -473,8 +487,8 @@ create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cy
     >in @  pic (?$) ?dup if  >pic >!  then  >in !
     skip skip
 ;
-: add-actor  ( - <template> )
-    template ($)  stage instance as ;
+: add-actor  ( - <template> actor )
+    template ($)  stage instance dup as ;
 
 
 ( --== Some startup stuff ==-- )
@@ -490,9 +504,8 @@ create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cy
     load-pics
     load-roles
     show>
-        black backdrop
-        
-        curScene @> draw-scene
+        black backdrop        
+        stage draw-scene
         me >r stage draws r> as
 ;
 

@@ -5,6 +5,6 @@ state: camera state1
     <right> kstate if 1 x +! then
     <up> kstate if -1 y +! then
     <down> kstate if 1 y +! then
-    x 2@ curscene @> scroll 2!
+    x 2@ stage scroll 2!
 ;
 action: camera start  state1 ;
