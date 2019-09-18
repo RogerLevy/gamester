@@ -15,8 +15,8 @@ import  myconid myconid.f
 import  willy willy.f
 import  camera camera.f
 
-pic( myconid ) to this
-    set-animation 1   0 1 2 3
+pic( willy ) to this
+    set-animation 1   0 1 2 1
 
 16 bank mytilemap
 
@@ -27,5 +27,8 @@ mytilemap garbage
 mytilemap pic( overworld ) stage 0 init-layer
 
 100 100 at
-add-actor myconid  named myboy
+add-actor myconid  named myboy  start
+0 0 at
 add-actor camera   named camera     start
+150 150 at
+add-actor willy  named willy  start

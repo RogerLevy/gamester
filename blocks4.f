@@ -3,12 +3,14 @@
 
 \ TODO:
 \ [x] Bank's cursors should be stored in the image not in the dictionary.
-\ [ ] SET needs to work with block refs
+\ [ ] SET needs to work with block ref vars
 
 [defined] save [if] save [then]
 
 empty
+depend ramen/lib/rsort.f
 depend ramen/lib/a.f
+depend ramen/lib/std/kb.f
 
 ( --== Utilities ==-- )
 
@@ -32,7 +34,8 @@ s" prg/blocks/test.blk" blkpath place
 : save    image /image blkpath count file! ;
 :make bye   save  al_uninstall_system  0 ExitProcess ;
 
-revert 
+revert
+
 
 ( --== block stuff ==-- )
 
@@ -40,8 +43,8 @@ revert
 : block> image - #2 lshift ;
 : blocks  #2 rshift ;
 : block+  #1024 + ;
-: free?  c@ 0= ;
-: enabled?  c@ 0<> ; 
+: free?  c@ 0 = ;
+: enabled?  c@ 0 <> ; 
 : unclaim  0 swap c! ;
 : claim  $ff swap c! ;
 : >nfa   ;
@@ -63,6 +66,8 @@ revert
 
 ( --== bank stuff ==-- )
 
+#1024 1024 * constant /bank
+: >bank  ( block - bank )   image /bank mod - dup   /bank mod -  image /bank mod + ;
 : bank   create   ( start: ) 1024 * ,  does> @ block ;
 : header  ;
 : >first  ( bank - adr ) block+ ;
@@ -85,13 +90,13 @@ revert
     >first
     1023 for
         dup >nfa ccount
-        <name> compare 0= if skip unloop
+        <name> compare 0 = if skip unloop
             state @ if  block> postpone literal postpone block  then
         ;then
         block+
     loop   drop  0
 ;
-: ($)  (?$) dup 0= abort" Not found!" ;
+: ($)  (?$) dup 0 = abort" Not found!" ;
 
 : $(  ( - <bank> <name> adr )  \ find a named block; ex: $( pic myconid )
     ' execute ($) skip ; immediate
@@ -178,6 +183,7 @@ value /assetheader
 0 value /system
 
 : global  /system swap field to /system does> @ system + ;
+: \global  +to /system  0 parse 2drop ;
 
 cell global curStage     \ current stage (block)
 
@@ -212,12 +218,12 @@ constant /pic
 : add-pic  ( - <name> <path> )
     pic one dup named   to this
     <word> this path cplace
-    16 this subsize !
+    16 16 this subsize 2!
     this load-pic
 ;
 
-: draw-tile  ( n pic - )  \ only 16x16 supported for now, and no flipping
-    handle @   swap 16 /mod 16 16 2*  16 16   0 bblit ;
+: draw-tile  ( n pic - )  
+    over >r dup >r  handle @   swap 16 /mod 16 16 2*  r> subsize 2@  r> #28 >> bblit ;
 
 
 
@@ -243,6 +249,7 @@ blockstruct value /actor  \ space for mark etc
 create mestk  0 , 16 cells allot
 
 : var  /actor cell field to /actor  does>  @ me + ;
+: alias  ( - <old> <new> ) ' >body @ field drop  does> @ me + ;
 
 \ SET works with these.
 
@@ -275,6 +282,7 @@ var sbx     \ solid hitbox
 var sby
 var sbw
 var sbh
+var zorder
 /actor value /actorbase
 #512 to /actor   \ reserve 512 bytes
 
@@ -336,15 +344,12 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 : action: ( - <role> <name/alias> ...code... ; ) ( ... - ... ) \ doesn't set state#
     role ($) 
     ?action  \ create if doesn't exist
-    vectors ' ?alias >body @ cells + :noname swap ! 
+    vectors ' ?alias >body @ cells + :noname swap !  \ TBD : should only set if compilation is without errors
 ;
 : state:  ( - <role> <name/alias> ...code... ; ) ( - ) \ sets state#
     role ($) 
     ?state  \ create if doesn't exist
     vectors ' ?alias >body @ cells + :noname swap ! 
-;
-: alias:  ( - <src> <name> )
-    ' create , $C0FFEE ,
 ;
 : load-role  ( role - )
     >r
@@ -409,7 +414,7 @@ layer-template to this
 : filter-stage  ( src-scene stage - )  \ removes excluded actors 
     | b s |
     b each>
-    scenebits @ s scenemask @ and 0= if
+    scenebits @ s scenemask @ and 0 = if
         me delete
     then
 ;
@@ -428,18 +433,13 @@ layer-template to this
     r> drop
 ;
 : draw-layer ( scrollx scrolly layer - )
-    dup tilemap-config a! @+ block @+ block dup subsize @
+    dup tilemap-config a!> @+ block @+ block dup subsize @
         | tsize pic baseadr |
     ( layer ) >r
     ( scrollx scrolly ) r@ parallax 2@ 2*  r@ scroll-offset 2@ 2+
         r@ limit-scroll
         2dup tsize dup 2mod 2negate at
         tsize dup 2/ 2pfloor 512 * + cells baseadr + pic draw-tilemap
-    r> drop
-;
-: draw-scene ( scene - )
-    >r
-    r@ scroll 2@ r@ layer0 draw-layer  \ others TBD    
     r> drop
 ;
 : stage  curStage @> ;
@@ -470,11 +470,26 @@ create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cy
     x 2@ sbx 2@ 2+ at  id @ 8 mod colors vexec  sbw 2@ rectf ;
 
 : draw  ( - )  \ draw current actor
-    hid @ if  placeholder  ;then
+    hid @ if  >pic @ 0 = if  placeholder  then  ;then
     x 2@  curStage @> scroll 2@ 2-  at  sub@ >pic @> draw-tile ;
 
 : animate  ( n speed - )
     rate ! 0 animctr ! anim# ! ;
+
+( --== Z-sorted rendering ==-- )
+
+create drawlist 1023 cells /allot
+: gathered  drawlist dup a!> 0 rot each> !+ 1 + ;
+: zorder@  { zorder @ } ;
+: draws  ( stage - )
+    gathered 2dup ['] zorder@ rsort swap a!> for @+ { draw act } loop ;
+
+: draw-scene ( scene - )
+    me >r >r
+    r@ scroll 2@ r@ layer0 draw-layer  \ others TBD
+    r@ draws
+    r> drop r> as
+;
 
 ( --== Additional commands ==-- )
 
@@ -497,13 +512,13 @@ create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cy
 ;
 : add-actor  ( - <template> actor )
     template ($)  stage instance dup as ;
-
+: update  ( - <role> )
+    s" ld " role ($) path ccount >rolepath -ext strjoin evaluate ;
+: u  update ;
 
 ( --== Some startup stuff ==-- )
 
 (?action) start
-
-: draws  each> as draw act ;
 
 : load-pics    pic each> load-pic ;
 : load-roles   role each> load-role ;
@@ -512,9 +527,9 @@ create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cy
     load-pics
     load-roles
     show>
+        <s> pressed ctrl? and if save then 
         black backdrop        
         stage draw-scene
-        me >r stage draws r> as
 ;
 
 go
