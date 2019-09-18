@@ -222,9 +222,10 @@ constant /pic
     this load-pic
 ;
 
+decimal
 : draw-tile  ( n pic - )  
-    over >r dup >r  handle @   swap 16 /mod 16 16 2*  r> subsize 2@  r> #28 >> bblit ;
-
+    over >r dup >r  handle @   swap 16.0 /mod 4 lshift swap 4 lshift swap r> subsize 2@  r> 28 rshift bblit ;
+fixed
 
 
 ( --== Tilemap stuff ==-- )
@@ -534,6 +535,6 @@ create drawlist 1023 cells /allot
 
 go
 
-320 240 resolution
+\ displaywh resolution
 
 cr .( Loaded Blocks4.)
