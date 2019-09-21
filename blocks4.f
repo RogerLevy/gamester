@@ -12,6 +12,8 @@ depend ramen/lib/rsort.f
 depend ramen/lib/a.f
 depend ramen/lib/std/kb.f
 
+define Gamester
+
 ( --== Utilities ==-- )
 
 : |  postpone locals| ; immediate
@@ -62,6 +64,11 @@ revert
 : blockstruct  0 1 reserve ;
 : \record    1 reserve skip ;
 : offset+    ' >body @ + ;
+
+blockstruct
+    record systemType   \ word
+    2 reserve
+constant /systemblock  
 
 
 ( --== bank stuff ==-- )
@@ -136,7 +143,7 @@ revert
 blockstruct
     record path 7 reserve
     record handle
-value /assetheader
+value /assetheader    
 
 
 ( ~~~~ data structure explanation ~~~ )
@@ -171,7 +178,7 @@ value /assetheader
 
 ( --== Engine memory layout ==-- )
 
-: system  0 block ;
+0 bank system
 1 bank pic
 2 bank sound
 3 bank scene
@@ -180,13 +187,16 @@ value /assetheader
 8 bank stage0    \ the default stage
 
 
-0 value /system
+( --== Globals ==-- )
+
+blockstruct value /system
 
 : global  /system swap field to /system does> @ system + ;
 : \global  +to /system  0 parse 2drop ;
 
 cell global curStage     \ current stage (block)
-
+cell global tool         \ current tool  (block)
+#512 to /system
 
 
 ( --== Pic stuff ==-- )
@@ -492,6 +502,7 @@ create drawlist 1023 cells /allot
     r> drop r> as
 ;
 
+
 ( --== Additional commands ==-- )
 
 : t( ( - <name> <> template )   \ ex: t( myconid )
@@ -517,24 +528,83 @@ create drawlist 1023 cells /allot
     s" ld " role ($) path ccount >rolepath -ext strjoin evaluate ;
 : u  update ;
 
+( --== Tools stuff pt1 ==-- )
+
+blockstruct
+    record toolSource 7 reserve
+    record starter         \ word
+    record vocab           \ word
+    record >toolscene
+constant /tool
+
+: toolshed  tool @> >toolScene @> ;  
+
+: load-tool  ( tool -- )
+    tool >!
+    only forth also Gamester 
+    s" depend " tool @> toolSource ccount strjoin evaluate
+;
+
 ( --== Some startup stuff ==-- )
 
 (?action) start
 
 : load-pics    pic each> load-pic ;
 : load-roles   role each> load-role ;
+: load-systems system each> load-tool ;
 
-: go
-    load-pics
-    load-roles
+: asdf  quit ;
+
+: quit
+    only forth also Gamester definitions
+    0 to 'step  0 to 'pump
     show>
         <s> pressed ctrl? and if save then 
         black backdrop        
         stage draw-scene
 ;
 
-go
+: empty  only Forth also empty quit ;
 
-\ displaywh resolution
+: warm
+    load-pics
+    load-roles
+    load-systems
+    quit
+;
+
+( --== Tool stuff pt 2 ==-- )
+
+: install  ( -- <scriptpath> <name> )
+    quit
+    system one tool >!
+    s" tool" tool @> systemType cplace
+    scene one tool @> >toolScene >!
+    only forth also Gamester 
+    s" depend "
+        <word> 2dup tool @> toolSource cplace
+        strjoin evaluate
+    tool @> named
+;
+
+: run ( -- <name> )
+    system ($) >r
+    r@ tool >!
+    only forth also Gamester also  r@ vocab ccount evaluate
+    r@ starter ccount evaluate
+    r> drop
+;
+
+: define-tool  ( - <name> )  \ defines a vocab and assigns it to the current tool
+    <name> tool @> vocab cplace define ;
+
+
+    
+
+( ~~~~~~~~~~~~~~~~~~~~~~~~~ )
+
+warm
+
+displaywh 3 3 2/ resolution
 
 cr .( Loaded Blocks4.)

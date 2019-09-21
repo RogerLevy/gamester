@@ -32,3 +32,7 @@ add-actor myconid  named myboy  start
 add-actor camera   named camera     start
 150 150 at
 add-actor willy  named willy  start
+
+
+install prg/blocks/maped.f maped
+install prg/blocks/maped.f maped2
