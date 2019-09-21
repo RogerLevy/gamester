@@ -4,6 +4,7 @@
 
 image /image erase
 
+viewwh 2.
 stage0 init-stage
 stage0 curStage >!
 
@@ -29,7 +30,8 @@ mytilemap pic( overworld ) stage 0 init-layer
 100 100 at
 add-actor myconid  named myboy  start
 0 0 at
-add-actor camera   named camera     start
+add-actor camera   named camera  stop \  start
+me camera >!
 150 150 at
 add-actor willy  named willy  start
 

@@ -8,6 +8,8 @@
 [defined] save [if] save [then]
 
 empty
+only forth definitions
+depend ws/ws.f
 depend ramen/lib/rsort.f
 depend ramen/lib/a.f
 depend ramen/lib/std/kb.f
@@ -61,14 +63,31 @@ revert
 : record    #16 field ;
 : skip      <word> 2drop ;
 : reserve       #16 * + ;
-: blockstruct  0 1 reserve ;
 : \record    1 reserve skip ;
 : offset+    ' >body @ + ;
 
+0
+    1 reserve
+    cell field id
+drop #32 constant blockstruct
+
 blockstruct
     record systemType   \ word
-    2 reserve
-constant /systemblock  
+drop #64 constant /systemblock  
+
+
+( --== Globals ==-- )
+
+blockstruct value /system
+
+: system  0 block ;  \ kludge, redefined in more logical way below
+: global  /system swap field to /system does> @ system + ;
+: \global  +to /system  0 parse 2drop ;
+
+cell global curStage     \ current stage (block)
+cell global tool         \ current tool  (block)
+cell global nextid
+#512 to /system
 
 
 ( --== bank stuff ==-- )
@@ -85,7 +104,8 @@ constant /systemblock
     +cursor
     1023 for
         dup >current free? if
-            >current dup claim
+            1 nextid +!
+            >current dup claim  nextid @ over id !
         unloop ;then
     +cursor
     loop true abort" No more left!"
@@ -187,17 +207,6 @@ value /assetheader
 8 bank stage0    \ the default stage
 
 
-( --== Globals ==-- )
-
-blockstruct value /system
-
-: global  /system swap field to /system does> @ system + ;
-: \global  +to /system  0 parse 2drop ;
-
-cell global curStage     \ current stage (block)
-cell global tool         \ current tool  (block)
-#512 to /system
-
 
 ( --== Pic stuff ==-- )
 
@@ -264,7 +273,6 @@ create mestk  0 , 16 cells allot
 
 \ SET works with these.
 
-var id 
 var scenebits  \ defines which scenes this actor will appear in
 var dead    \ if on, will be deleted at end of frame.
 var x
@@ -301,6 +309,9 @@ var zorder
 var var1 var var2 var var3 var var4 var var5 var var6 var var7 var var8
 var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 
+: *actor  ( stage -- actor )
+    one dup { } ;
+
 
 ( --== Assumption ==-- )
 
@@ -310,6 +321,8 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 : {  ( actor - ) state @  if s" me >r as" evaluate else  i{  then ; immediate
 : }  ( - ) state @ if  s" r> as" evaluate else  i}  then ; immediate
 
+
+( --= Template stuff ==-- )
 
 : instance  ( template stage - actor )
     one {
@@ -396,6 +409,7 @@ blockstruct
     record bgm         \ ( TBD ) probably a general sound #, which can optionally stream a file
                        \ could add extra params like volume and pitch
     record scroll
+    record res
 value /sceneheader
 #256
     /layer field layer0 
@@ -417,6 +431,7 @@ layer-template to this
     layer-template r@ layer1 /layer move
     layer-template r@ layer2 /layer move
     layer-template r@ layer3 /layer move
+    viewwh r@ res 2!
     r> drop 
 ;
 : init-stage ( stage - )
@@ -478,10 +493,10 @@ layer-template to this
 create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cyan , ' pink , 
 
 : placeholder  ( - )
-    x 2@ sbx 2@ 2+ at  id @ 8 mod colors vexec  sbw 2@ rectf ;
+    x 2@ sbx 2@ 2+ at  me id @ 8 mod colors vexec  sbw 2@ rectf ;
 
 : draw  ( - )  \ draw current actor
-    hid @ if  >pic @ 0 = if  placeholder  then  ;then
+    >pic @ 0 = if  placeholder  white  ;then
     x 2@  curStage @> scroll 2@ 2-  at  sub@ >pic @> draw-tile ;
 
 : animate  ( n speed - )
@@ -495,8 +510,15 @@ create drawlist 1023 cells /allot
 : draws  ( stage - )
     gathered 2dup ['] zorder@ rsort swap a!> for @+ { draw act } loop ;
 
+: (resolution)
+    >r
+    r@ res 2@ or 0= if displaywh 3 3 2/ r@ res 2! then
+    r> res 2@ resolution
+;
+
 : draw-scene ( scene - )
     me >r >r
+    r@ (resolution)
     r@ scroll 2@ r@ layer0 draw-layer  \ others TBD
     r@ draws
     r> drop r> as
@@ -541,7 +563,7 @@ constant /tool
 
 : load-tool  ( tool -- )
     tool >!
-    only forth also Gamester 
+    only forth definitions also Gamester  \ 
     s" depend " tool @> toolSource ccount strjoin evaluate
 ;
 
@@ -580,11 +602,9 @@ constant /tool
     system one tool >!
     s" tool" tool @> systemType cplace
     scene one tool @> >toolScene >!
-    only forth also Gamester 
-    s" depend "
-        <word> 2dup tool @> toolSource cplace
-        strjoin evaluate
+    <word> tool @> toolSource cplace
     tool @> named
+    tool @> load-tool
 ;
 
 : run ( -- <name> )
@@ -596,15 +616,14 @@ constant /tool
 ;
 
 : define-tool  ( - <name> )  \ defines a vocab and assigns it to the current tool
+    only forth also Gamester definitions
     <name> tool @> vocab cplace define ;
-
-
     
 
 ( ~~~~~~~~~~~~~~~~~~~~~~~~~ )
 
-warm
-
 displaywh 3 3 2/ resolution
+
+warm
 
 cr .( Loaded Blocks4.)
