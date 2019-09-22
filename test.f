@@ -4,9 +4,9 @@
 
 image /image erase
 
-viewwh 2.
-stage0 init-stage
-stage0 curStage >!
+displaywh 3 3 2/ resolution
+playfield init-scene
+playfield gameSlew >!
 
 add-pic myconid myconids.png
 add-pic overworld overworld-tiles.png

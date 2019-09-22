@@ -84,7 +84,7 @@ blockstruct value /system
 : global  /system swap field to /system does> @ system + ;
 : \global  +to /system  0 parse 2drop ;
 
-cell global curStage     \ current stage (block)
+cell global gameSlew     \ current stage (block)
 cell global tool         \ current tool  (block)
 cell global nextid
 #512 to /system
@@ -95,7 +95,6 @@ cell global nextid
 #1024 1024 * constant /bank
 : >bank  ( block - bank )   image /bank mod - dup   /bank mod -  image /bank mod + ;
 : bank   create   ( start: ) 1024 * ,  does> @ block ;
-: header  ;
 : >first  ( bank - adr ) block+ ;
 : >current  ( bank - adr ) dup @ blocks + ;
 : not0  dup ?exit 1 + ;
@@ -128,7 +127,7 @@ cell global nextid
 : $(  ( - <bank> <name> adr )  \ find a named block; ex: $( pic myconid )
     ' execute ($) skip ; immediate
 : clear-bank  ( bank - )
-    header 0 over !  \ reset cursor
+    0 over !  \ reset cursor
      >first 1023 blocks erase ;
 : each>  ( bank - )  ( block - )
     r>  swap >first 1023 for
@@ -138,6 +137,49 @@ cell global nextid
         block+        
     loop 2drop 
 ;
+
+
+( ~~~~ data structure explanation ~~~ )
+
+( A bank is 1024 blocks. )
+( The first 16 banks are reserved for the engine. )
+( You should name all of your banks via BANK . )
+
+( A record is 16 bytes. They can hold 1-4 numbers or a string up to 15 chars. )
+( Records can sometimes occupy multiple slots. )
+( Not every kind of block uses records, for example actors. )
+
+( Tilemaps are 512x512-tile arrays [1 tile = 1 cell], taking up a single bank slot. )
+( A scene brings tilemaps and actors together.  A bitmask selects which of a bank of
+( actors will be included in the scene.  )
+
+( An animation is 16 bytes, a count and up to 14 indexes plus a loop offset. )
+( Actually you can define an animation that's longer than 14, it just will spill }
+( into the next animation slot, making it unusable for its own animation. )
+
+( A slew is a scene combined with a bank of actors. )
+
+( There are a maximum of 1023 of each of the following: )
+( - Pics )
+( - Scenes )
+( - Sounds, including BGM's )
+( - Roles )
+( - Templates )
+( - Actors in a slew )
+
+( The number of available banks is dependent on the image size. )
+
+( --== Engine memory layout ==-- )
+
+0 bank system
+1 bank pic
+2 bank sound
+3 bank scene
+4 bank template  \ a place to store actors for instantiating multiple times in different stages
+5 bank role      \ like classes, but just for actors
+6 bank gui       \ slew; default for tool actors
+8 bank playfield \ slew; default for game actors
+
 
 
 ( --== basic editing tools ==-- )
@@ -164,47 +206,6 @@ blockstruct
     record path 7 reserve
     record handle
 value /assetheader    
-
-
-( ~~~~ data structure explanation ~~~ )
-
-( A bank is 1024 blocks. )
-( The first 16 banks are reserved for the engine. )
-( You should name all of your banks via BANK . )
-
-( A record is 16 bytes. They can hold 1-4 numbers or a string up to 15 chars. )
-( Records can sometimes occupy multiple slots. )
-( Not every kind of block uses records, for example actors. )
-
-( Tilemaps are 512x512-tile arrays [1 tile = 1 cell], taking up a single bank slot. )
-( A scene brings tilemaps and actors together.  A bitmask selects which of a bank of
-( actors will be included in the scene.  )
-
-( An animation is 16 bytes, a count and up to 14 indexes plus a loop offset. )
-( Actually you can define an animation that's longer than 14, it just will spill }
-( into the next animation slot, making it unusable for its own animation. )
-
-( A stage is a scene attached to a bank of actors. )
-
-( There are a maximum of 1023 of the following: )
-( - Pics )
-( - Scenes )
-( - Sounds, including BGM's )
-( - Roles )
-( - Templates )
-( - Actors in a stage )
-
-( The number of available banks is dependent on the image size. )
-
-( --== Engine memory layout ==-- )
-
-0 bank system
-1 bank pic
-2 bank sound
-3 bank scene
-4 bank template  \ a place to store actors for instantiating multiple times in different stages
-5 bank role      \ like classes, but just for actors
-8 bank stage0    \ the default stage
 
 
 
@@ -302,14 +303,13 @@ var sby
 var sbw
 var sbh
 var zorder
-/actor value /actorbase
 #512 to /actor   \ reserve 512 bytes
 
 \ user variables:
 var var1 var var2 var var3 var var4 var var5 var var6 var var7 var var8
 var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 
-: *actor  ( stage -- actor )
+: *actor  ( slew -- actor )
     one dup { } ;
 
 
@@ -324,7 +324,7 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 
 ( --= Template stuff ==-- )
 
-: instance  ( template stage - actor )
+: instance  ( template slew - actor )
     one {
         me 1 copy
         $ff me !   \ invalidates the name
@@ -333,10 +333,10 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 ;
 
 
-( --== Stage stuff ==-- )
+( --== Slew stuff ==-- )
 
 0 value xt
-: shout  ( xt stage )
+: shout  ( xt slew )
     swap to xt each> as xt execute ;
 
 ( --== Role stuff ==-- )
@@ -399,12 +399,11 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
     record parallax         ( x, y )
     record scroll-offset    ( x, y )
     record bounds           ( x, y, w, h ) 
-    record layerctl1
-    record layerctl2
-value /layer  
+    record viewport         ( x, y, w, h ) 
+drop #96 value /layer  
 
 blockstruct
-    record >stage      \ block#
+    \record >slew      \ block# (unused)
     record scenemask   \ bitmask that defines which actors will be copied when loading to this scene
     record bgm         \ ( TBD ) probably a general sound #, which can optionally stream a file
                        \ could add extra params like volume and pitch
@@ -424,9 +423,8 @@ layer-template to this
     0 0 8192 8192 this bounds 4!
     
 
-: init-scene ( stage scene - ) 
+: init-scene ( scene - ) 
     >r
-    r@ >stage >!
     layer-template r@ layer0 /layer move
     layer-template r@ layer1 /layer move
     layer-template r@ layer2 /layer move
@@ -434,23 +432,17 @@ layer-template to this
     viewwh r@ res 2!
     r> drop 
 ;
-: init-stage ( stage - )
-    dup init-scene
-;
-: filter-stage  ( src-scene stage - )  \ removes excluded actors 
+: filter-slew  ( src-scene slew - )  \ removes excluded actors 
     | b s |
     b each>
     scenebits @ s scenemask @ and 0 = if
         me delete
     then
 ;
-: load-scene  ( scene dest-stage - )
+: load-scene  ( scene dest-slew - )
     | s2 s1 |
-    s2 >stage @       \ the stage's stage pointer can't change 
-        s1 s2 1 copy  \ copy the header
-    s2 >stage !
-    s1 >stage @> >first   s2 >stage @> >first   1023 copy  \ copy the actors
-    s2 dup >stage @> filter-stage  \ filter out excluded actors
+    s1 s2 /bank move
+    s2 dup filter-slew
 ;
 : limit-scroll  ( scrollx scrolly layer - scrollx scrolly )
     >r
@@ -460,21 +452,23 @@ layer-template to this
 ;
 : draw-layer ( scrollx scrolly layer - )
     dup tilemap-config a!> @+ block @+ block dup subsize @
-        | tsize pic baseadr |
-    ( layer ) >r
-    ( scrollx scrolly ) r@ parallax 2@ 2*  r@ scroll-offset 2@ 2+
-        r@ limit-scroll
-        2dup tsize dup 2mod 2negate at
-        tsize dup 2/ 2pfloor 512 * + cells baseadr + pic draw-tilemap
-    r> drop
+        | tsize pic baseadr layer |
+    tsize 0 = ?exit
+    ( scrollx scrolly ) layer parallax 2@ 2*  layer scroll-offset 2@ 2+
+    layer limit-scroll
+    layer viewport xy@ at
+    layer viewport 4@ clip>
+    2dup tsize dup 2mod 2negate +at
+    tsize dup 2/ 2pfloor 512 * + cells baseadr + pic draw-tilemap
 ;
-: stage  curStage @> ;
+: stage  gameSlew @> ;
 : layer  ( scene n - layer )  >r layer0 r> /layer * + ;
 : init-layer  ( tilemap tileset-pic scene n - )
     layer >r
         r@ tileset-pic >! r@ tilemap-block >!
         1 1 r@ parallax 2!
         0 0 r@ scroll-offset 2!
+        0 0 viewwh r@ viewport 4!
     r> drop
 ;
 
@@ -495,9 +489,13 @@ create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cy
 : placeholder  ( - )
     x 2@ sbx 2@ 2+ at  me id @ 8 mod colors vexec  sbw 2@ rectf ;
 
-: draw  ( - )  \ draw current actor
+defer draw
+
+: draw-sprite  ( - )
     >pic @ 0 = if  placeholder  white  ;then
-    x 2@  curStage @> scroll 2@ 2-  at  sub@ >pic @> draw-tile ;
+    x 2@  gameSlew @> scroll 2@ 2-  at  sub@ >pic @> draw-tile ;
+
+' draw-sprite is draw
 
 : animate  ( n speed - )
     rate ! 0 animctr ! anim# ! ;
@@ -507,19 +505,21 @@ create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cy
 create drawlist 1023 cells /allot
 : gathered  drawlist dup a!> 0 rot each> !+ 1 + ;
 : zorder@  { zorder @ } ;
-: draws  ( stage - )
+: draws  ( slew - )
     gathered 2dup ['] zorder@ rsort swap a!> for @+ { draw act } loop ;
 
 : (resolution)
     >r
-    r@ res 2@ or 0= if displaywh 3 3 2/ r@ res 2! then
+    r@ res 2@ or 0 = if viewwh r@ res 2! then
     r> res 2@ resolution
 ;
-
 : draw-scene ( scene - )
     me >r >r
     r@ (resolution)
-    r@ scroll 2@ r@ layer0 draw-layer  \ others TBD
+    r@ scroll 2@ r@ layer0 draw-layer 
+    r@ scroll 2@ r@ layer1 draw-layer 
+    r@ scroll 2@ r@ layer2 draw-layer 
+    r@ scroll 2@ r@ layer3 draw-layer 
     r@ draws
     r> drop r> as
 ;
@@ -550,21 +550,24 @@ create drawlist 1023 cells /allot
     s" ld " role ($) path ccount >rolepath -ext strjoin evaluate ;
 : u  update ;
 
-( --== Tools stuff pt1 ==-- )
+( --== Tools stuff pt 1 ==-- )
 
-blockstruct
-    record toolSource 7 reserve
-    record starter         \ word
-    record vocab           \ word
-    record >toolscene
+0 value installing?
+
+: toolfield  ( size -- <name> )
+    field does> @ tool @> + ;
+
+/systemblock
+    #96 toolfield toolSource
+    #16 toolfield starter  \ word
+    #16 toolfield vocab    \ word
+    cell toolfield >toolScene
 constant /tool
-
-: toolshed  tool @> >toolScene @> ;  
 
 : load-tool  ( tool -- )
     tool >!
-    only forth definitions also Gamester  \ 
-    s" depend " tool @> toolSource ccount strjoin evaluate
+    only forth also Gamester definitions 
+    toolSource ccount included
 ;
 
 ( --== Some startup stuff ==-- )
@@ -573,13 +576,14 @@ constant /tool
 
 : load-pics    pic each> load-pic ;
 : load-roles   role each> load-role ;
-: load-systems system each> load-tool ;
+: load-systems system each>  false to installing? load-tool ;
 
 : asdf  quit ;
 
 : quit
     only forth also Gamester definitions
     0 to 'step  0 to 'pump
+    ['] draw-sprite is draw
     show>
         <s> pressed ctrl? and if save then 
         black backdrop        
@@ -597,32 +601,33 @@ constant /tool
 
 ( --== Tool stuff pt 2 ==-- )
 
+: tool-scene  >toolScene @> ;  
 : install  ( -- <scriptpath> <name> )
+    true to installing?
     quit
     system one tool >!
     s" tool" tool @> systemType cplace
-    scene one tool @> >toolScene >!
-    <word> tool @> toolSource cplace
+    scene one
+        dup init-scene
+        >toolScene >!
+    <word> toolSource cplace
     tool @> named
     tool @> load-tool
 ;
-
 : run ( -- <name> )
-    system ($) >r
-    r@ tool >!
-    only forth also Gamester also  r@ vocab ccount evaluate
-    r@ starter ccount evaluate
-    r> drop
+    system ($) tool >!
+    gui clear-bank
+    only forth also Gamester also  vocab ccount 2dup type evaluate
+    starter ccount evaluate
 ;
-
-: define-tool  ( - <name> )  \ defines a vocab and assigns it to the current tool
+: define-tool  ( - <name> flag )  \ defines a vocab and assigns it to the current tool
     only forth also Gamester definitions
-    <name> tool @> vocab cplace define ;
+    <name> vocab cplace
+    >in @ postpone [undefined] swap >in !
+    define
+;
     
-
 ( ~~~~~~~~~~~~~~~~~~~~~~~~~ )
-
-displaywh 3 3 2/ resolution
 
 warm
 
