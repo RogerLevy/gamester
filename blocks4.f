@@ -9,10 +9,11 @@
 
 empty
 only forth definitions
-depend ws/ws.f
+\ depend ws/ws.f
 depend ramen/lib/rsort.f
 depend ramen/lib/a.f
 depend ramen/lib/std/kb.f
+depend venery/venery.f
 
 define Gamester
 
@@ -87,6 +88,7 @@ blockstruct value /system
 cell global gameSlew     \ current stage (block)
 cell global tool         \ current tool  (block)
 cell global nextid
+cell global lasttool
 #512 to /system
 
 
@@ -250,8 +252,11 @@ fixed
 
 ( --== Tilemap stuff ==-- )
 
+: adr  ( col row adr - adr )
+    >r 2pfloor  512 * + cells r> + ;
+
 : draw-tilemap  ( adr pic - )
-    | p |  hold>
+    a@ | a p |  hold>
     viewh p subsize @ / 1 + for
         dup a! at@ 2>r
         vieww p subsize @ / 1 + for
@@ -260,6 +265,7 @@ fixed
         2r> p subsize @ + at
         512 cells +
     loop drop
+    a a!
 ;
 
 
@@ -421,7 +427,7 @@ create layer-template  /layer /allot
 layer-template to this
     1 1 this parallax 2!
     0 0 8192 8192 this bounds 4!
-    
+    0 0 viewwh this viewport 4!
 
 : init-scene ( scene - ) 
     >r
@@ -451,24 +457,25 @@ layer-template to this
     r> drop
 ;
 : draw-layer ( scrollx scrolly layer - )
-    dup tilemap-config a!> @+ block @+ block dup subsize @
-        | tsize pic baseadr layer |
+    dup tilemap-config 2@ swap block swap block dup subsize @
+        | tsize pic baseadr layer scrolly scrollx |
     tsize 0 = ?exit
-    ( scrollx scrolly ) layer parallax 2@ 2*  layer scroll-offset 2@ 2+
-    layer limit-scroll
     layer viewport xy@ at
     layer viewport 4@ clip>
-    2dup tsize dup 2mod 2negate +at
-    tsize dup 2/ 2pfloor 512 * + cells baseadr + pic draw-tilemap
+    scrollx scrolly layer parallax 2@ 2*  layer scroll-offset 2@ 2+ 
+        layer limit-scroll 2dup
+        tsize dup 2mod 2negate +at
+        tsize dup 2/ 2pfloor 512 * + cells baseadr + pic draw-tilemap
 ;
 : stage  gameSlew @> ;
 : layer  ( scene n - layer )  >r layer0 r> /layer * + ;
-: init-layer  ( tilemap tileset-pic scene n - )
-    layer >r
+: init-layer  ( tilemap tileset-pic layer - )
+    >r
         r@ tileset-pic >! r@ tilemap-block >!
         1 1 r@ parallax 2!
         0 0 r@ scroll-offset 2!
         0 0 viewwh r@ viewport 4!
+        0 0 8192 8192 r@ bounds 4!
     r> drop
 ;
 
@@ -559,20 +566,23 @@ create drawlist 1023 cells /allot
 
 /systemblock
     #96 toolfield toolSource
-    #16 toolfield starter  \ word
+    #32 toolfield starter  \ word
+    #32 toolfield resumer  \ word
     #16 toolfield vocab    \ word
     cell toolfield >toolScene
 constant /tool
 
 : load-tool  ( tool -- )
-    tool >!
+    tool @> >r  tool >!
     only forth also Gamester definitions 
     toolSource ccount included
+    r> tool >!
 ;
 
 ( --== Some startup stuff ==-- )
 
 (?action) start
+defer resume
 
 : load-pics    pic each> load-pic ;
 : load-roles   role each> load-role ;
@@ -583,21 +593,17 @@ constant /tool
 : quit
     only forth also Gamester definitions
     0 to 'step  0 to 'pump
+    tool @ lasttool !
+    tool off
     ['] draw-sprite is draw
     show>
+        <`> pressed if resume ;then
         <s> pressed ctrl? and if save then 
         black backdrop        
         stage draw-scene
 ;
 
-: empty  only Forth also empty quit ;
-
-: warm
-    load-pics
-    load-roles
-    load-systems
-    quit
-;
+: empty  only Forth also empty ;
 
 ( --== Tool stuff pt 2 ==-- )
 
@@ -614,10 +620,17 @@ constant /tool
     tool @> named
     tool @> load-tool
 ;
+: contextualize  only forth also Gamester also  vocab ccount evaluate ;
+:make resume ( -- )
+    lasttool @ if lasttool @ tool ! then 
+    tool @ 0 = if drop ;then
+    contextualize
+    resumer ccount evaluate
+;
 : run ( -- <name> )
     system ($) tool >!
     gui clear-bank
-    only forth also Gamester also  vocab ccount 2dup type evaluate
+    contextualize
     starter ccount evaluate
 ;
 : define-tool  ( - <name> flag )  \ defines a vocab and assigns it to the current tool
@@ -628,6 +641,13 @@ constant /tool
 ;
     
 ( ~~~~~~~~~~~~~~~~~~~~~~~~~ )
+
+: warm
+    load-pics
+    load-roles
+    load-systems
+    tool @ if resume else quit then
+;
 
 warm
 
