@@ -37,8 +37,8 @@ me camera >!
 150 150 at
 add-actor willy  named willy  start
 
-install prg/blocks/maped.f maped
-install prg/blocks/maped.f maped2
+install prg/blocks/mapster.f mapster
+install prg/blocks/mapster.f mapster2
 
-run maped
+run mapster
 mytilemap pic( overworld ) layer init-layer
