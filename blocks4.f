@@ -406,7 +406,7 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
     record scroll-offset    ( x, y )
     record bounds           ( x, y, w, h ) 
     record viewport         ( x, y, w, h ) 
-drop #96 value /layer  
+drop #128 value /layer  
 
 blockstruct
     \record >slew      \ block# (unused)
@@ -416,7 +416,7 @@ blockstruct
     record scroll
     record res
 value /sceneheader
-#256
+#512
     /layer field layer0 
     /layer field layer1
     /layer field layer2
