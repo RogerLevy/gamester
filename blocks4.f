@@ -22,6 +22,7 @@ define Gamester
 : |  postpone locals| ; immediate
 : <word>   bl word ccount ;
 : <name>  >in @ <word> rot >in ! ;
+: skip      <word> 2drop ;
 : echo  cr 2dup type ;
 : 4. 2swap 2. 2. ;
 
@@ -50,11 +51,10 @@ revert
 : block+  #1024 + ;
 : free?  c@ 0 = ;
 : enabled?  c@ 0 <> ; 
-: unclaim  0 swap c! ;
-: claim  $ff swap c! ;
+: claim  on ;
 : >nfa   ;
 : copy  blocks move ;
-: delete  1 blocks erase ;
+: delete  #1 swap c! ;
 : >!  swap block> swap ! ;
 : @>  @ block ;
 
@@ -62,13 +62,12 @@ revert
 
 : field     create over , + does> @ + ;
 : record    #16 field ;
-: skip      <word> 2drop ;
 : reserve       #16 * + ;
 : \record    1 reserve skip ;
 : offset+    ' >body @ + ;
 
 0
-    1 reserve
+    1 reserve      \ reserve the name field
     cell field id
 drop #32 constant blockstruct
 
@@ -85,10 +84,10 @@ blockstruct value /system
 : global  /system swap field to /system does> @ system + ;
 : \global  +to /system  0 parse 2drop ;
 
-cell global gameSlew     \ current stage (block)
+cell global gameSlew     \ current slew (block)
 cell global tool         \ current tool  (block)
-cell global nextid
-cell global lasttool
+cell global nextid       \ next global ID (incremented by ONE)
+cell global lasttool     \ last tool that was RUN (block#)
 #512 to /system
 
 
@@ -106,7 +105,7 @@ cell global lasttool
     1023 for
         dup >current free? if
             1 nextid +!
-            >current dup claim  nextid @ over id !
+            >current dup 1 blocks erase  dup claim  nextid @ over id !
         unloop ;then
     +cursor
     loop true abort" No more left!"
@@ -139,6 +138,8 @@ cell global lasttool
         block+        
     loop 2drop 
 ;
+: list  ( bank - )
+    each> cr dup @ #-1 = if h. else >nfa ccount type then ;
 
 
 ( ~~~~ data structure explanation ~~~ )
@@ -280,14 +281,20 @@ create mestk  0 , 16 cells allot
 
 \ SET works with these.
 
+var zorder
 var scenebits  \ defines which scenes this actor will appear in
 var dead    \ if on, will be deleted at end of frame.
 var x
 var y
 var vx
 var vy
-var woke    \ if woke is off, state isn't executed.
-var hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solid hitbox)
+var tintr
+var tintg
+var tintb
+var tinta
+var sx
+var sy
+var rtn
 var >role
 var state#
 var >pic
@@ -295,8 +302,10 @@ var sub#
 var anim#   
 var animctr
 var rate    \ animation speed
-var hp
-var maxhp
+/actor value /simple  \ for particles ... < 128 bytes
+
+var woke    \ if woke is off, state isn't executed.
+var hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solid hitbox)
 var attr    \ attribute flags
 var ctype   \ collision flags
 var cmask   \ collision mask
@@ -308,16 +317,15 @@ var sbx     \ solid hitbox
 var sby
 var sbw
 var sbh
-var zorder
-#512 to /actor   \ reserve 512 bytes
-
-\ user variables:
+var rolename #12 +to /actor
+\ predefined common variables
 var var1 var var2 var var3 var var4 var var5 var var6 var var7 var var8
 var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
-
-: *actor  ( slew -- actor )
-    one dup { } ;
-
+/actor value /common
+#768 to /actor   \ reserve 768 bytes
+\ the remaining space is considered "volatile" and can be cleared at any time by the engine.
+\ predefined reference variables
+var ref1  var ref2  var ref3  var ref4  var ref5  var ref6  var ref7  var ref8
 
 ( --== Assumption ==-- )
 
@@ -330,13 +338,16 @@ var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
 
 ( --= Template stuff ==-- )
 
-: instance  ( template slew - actor )
+: instance  ( template slew -- actor )
     one {
         me 1 copy
         $ff me !   \ invalidates the name
         at@ x 2!
     me }
 ;
+
+: role!  ( role -- )
+    dup role ! >nfa ccount rolename cplace ;
 
 
 ( --== Slew stuff ==-- )
@@ -445,11 +456,6 @@ layer-template to this
         me delete
     then
 ;
-: load-scene  ( scene dest-slew - )
-    | s2 s1 |
-    s1 s2 /bank move
-    s2 dup filter-slew
-;
 : limit-scroll  ( scrollx scrolly layer - scrollx scrolly )
     >r
     r@ bounds xy@ 2max
@@ -459,7 +465,7 @@ layer-template to this
 : draw-layer ( scrollx scrolly layer - )
     dup tilemap-config 2@ swap block swap block dup subsize @
         | tsize pic baseadr layer scrolly scrollx |
-    tsize 0 = ?exit
+    pic block> 0 = ?exit
     layer viewport xy@ at
     layer viewport 4@ clip>
     scrollx scrolly layer parallax 2@ 2*  layer scroll-offset 2@ 2+ 
@@ -468,8 +474,7 @@ layer-template to this
         tsize dup 2/ 2pfloor 512 * + cells baseadr + pic draw-tilemap
 ;
 : stage  gameSlew @> ;
-: layer  ( scene n - layer )  >r layer0 r> /layer * + ;
-: init-layer  ( tilemap tileset-pic layer - )
+: init-layer  ( tilemap tileset-pic layer -- )
     >r
         r@ tileset-pic >! r@ tilemap-block >!
         1 1 r@ parallax 2!
@@ -515,7 +520,7 @@ create drawlist 1023 cells /allot
 : draws  ( slew - )
     gathered 2dup ['] zorder@ rsort swap a!> for @+ { draw act } loop ;
 
-: (resolution)
+: (resolution)  ( scene -- )
     >r
     r@ res 2@ or 0 = if viewwh r@ res 2! then
     r> res 2@ resolution
@@ -534,26 +539,26 @@ create drawlist 1023 cells /allot
 
 ( --== Additional commands ==-- )
 
-: t( ( - <name> <> template )   \ ex: t( myconid )
+: t( ( -- <name> <> template )   \ ex: t( myconid )
     template ($) skip ; immediate
-: pic( ( - <name> <> pic )     \ ex: pic( myconid )
+: pic( ( -- <name> <> pic )     \ ex: pic( myconid )
     pic ($) skip ; immediate
-: scene( ( - <name> <> scene )   \ ex: scene( default )
+: scene( ( -- <name> <> scene )   \ ex: scene( default )
     scene ($) skip ; immediate
-: sound( ( - <name> <> sound )   \ ex: sound( bang )
+: sound( ( -- <name> <> sound )   \ ex: sound( bang )
     sound ($) skip ; immediate
-: role( ( - <name> <> role )   \ ex: role( myconid )
+: role( ( -- <name> <> role )   \ ex: role( myconid )
     role ($) skip ; immediate
-: import  ( - <name> <scriptpath> )
+: import  ( -- <name> <scriptpath> )
     >in @  add-role  >in !
     >in @  add-template  >in !
     >in @  role ($) >role >!  >in ! 
     >in @  pic (?$) ?dup if  >pic >!  then  >in !
     skip skip
 ;
-: add-actor  ( - <template> actor )
+: add-actor  ( -- <template> actor )
     template ($)  stage instance dup as ;
-: update  ( - <role> )
+: update  ( -- <role> )
     s" ld " role ($) path ccount >rolepath -ext strjoin evaluate ;
 : u  update ;
 
@@ -574,14 +579,15 @@ constant /tool
 
 : load-tool  ( tool -- )
     tool @> >r  tool >!
-    only forth also Gamester definitions 
+    warning on
+    only forth also Gamester definitions
     toolSource ccount included
+    warning off
     r> tool >!
 ;
 
 ( --== Some startup stuff ==-- )
 
-(?action) start
 defer resume
 
 : load-pics    pic each> load-pic ;
@@ -603,7 +609,7 @@ defer resume
         stage draw-scene
 ;
 
-: empty  only Forth also empty ;
+: empty  only Forth definitions also empty ;
 
 ( --== Tool stuff pt 2 ==-- )
 

@@ -27,7 +27,7 @@ pic( willy ) to this
 
 mytilemap garbage
 
-mytilemap pic( overworld ) stage 0 layer init-layer
+mytilemap pic( overworld ) stage layer0 init-layer
 
 100 100 at
 add-actor myconid  named myboy  start
