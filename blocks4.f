@@ -525,9 +525,9 @@ create drawlist 1023 cells /allot
     r@ (resolution)
     r@ scroll 2@ r@ layer0 draw-layer 
     r@ scroll 2@ r@ layer1 draw-layer 
+    r@ draws
     r@ scroll 2@ r@ layer2 draw-layer 
     r@ scroll 2@ r@ layer3 draw-layer 
-    r@ draws
     r> drop r> as
 ;
 
