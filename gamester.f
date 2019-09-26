@@ -35,11 +35,8 @@ define Gamester
 64 megs constant /image  
 /image buffer: image
 create blkpath  #256 allot
-depth #2 = [if]
+depth 0 = [if] s" default.blk" [then]
     blkpath place
-[else]
-    s" default.blk" blkpath place
-[then]
 : revert  blkpath count image /image @file ;
 : save    image /image blkpath count file! ;
 :make bye   save  al_uninstall_system  0 ExitProcess ;
@@ -277,59 +274,64 @@ fixed
 ( --== Actor stuff ==-- )
 
 0 value me
-blockstruct value /actor  \ space for mark etc
 create mestk  0 , 16 cells allot
 
-: var  /actor cell field to /actor  does>  @ me + ;
+: actorvar  ( offset -- <name> offset+cell )  cell field  does>  @ me + ;
 : alias  ( - <old> <new> ) ' >body @ field drop  does> @ me + ;
 
 \ SET works with these.
 
-var zorder
-var scenebits  \ defines which scenes this actor will appear in
-var dead    \ if on, will be deleted at end of frame.
-var x
-var y
-var vx
-var vy
-var tintr
-var tintg
-var tintb
-var tinta
-var sx
-var sy
-var rtn
-var >role
-var state#
-var >pic
-var sub#
-var anim#   
-var animctr
-var rate    \ animation speed
-/actor value /simple  \ for particles ... < 128 bytes
+blockstruct
+    actorvar zorder
+    actorvar scenebits  \ defines which scenes this actor will appear in
+    actorvar dead    \ if on, will be deleted at end of frame.
+    actorvar x
+    actorvar y
+    actorvar vx
+    actorvar vy
+    actorvar tintr
+    actorvar tintg
+    actorvar tintb
+    actorvar tinta
+    actorvar sx
+    actorvar sy
+    actorvar rtn
+    actorvar >role
+    actorvar state#
+    actorvar >pic
+    actorvar sub#
+    actorvar anim#   
+    actorvar animctr
+    actorvar rate    \ animation speed
+value /simple  \ for particles
 
-var woke    \ if woke is off, state isn't executed.
-var hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solid hitbox)
-var attr    \ attribute flags
-var ctype   \ collision flags
-var cmask   \ collision mask
-var ibx     \ interaction hitbox
-var iby
-var ibw
-var ibh
-var sbx     \ solid hitbox
-var sby
-var sbw
-var sbh
-var rolename #12 +to /actor
-\ predefined common variables
-var var1 var var2 var var3 var var4 var var5 var var6 var var7 var var8
-var var9 var var10 var var11 var var12 var var13 var var14 var var15 var var16
-/actor value /common
-#768 to /actor   \ reserve 768 bytes
-\ the remaining space is considered "volatile" and can be cleared at any time by the engine.
-\ predefined reference variables
-var ref1  var ref2  var ref3  var ref4  var ref5  var ref6  var ref7  var ref8
+#128
+    actorvar rolename #12 +
+    actorvar woke    \ if woke is off, state isn't executed.
+    actorvar hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solid hitbox)
+    actorvar attr    \ attribute flags
+    actorvar ctype   \ collision flags
+    actorvar cmask   \ collision mask
+    actorvar ibx     \ interaction hitbox
+    actorvar iby
+    actorvar ibw
+    actorvar ibh
+    actorvar sbx     \ solid hitbox
+    actorvar sby
+    actorvar sbw
+    actorvar sbh
+
+    \ predefined common variables
+    actorvar var1  actorvar var2   actorvar var3   actorvar var4   actorvar var5   actorvar var6   actorvar var7   actorvar var8
+    actorvar var9  actorvar var10  actorvar var11  actorvar var12  actorvar var13  actorvar var14  actorvar var15  actorvar var16
+value /common
+
+#768  \ the remaining space is considered "volatile" and can be cleared at any time by the engine.
+    \ predefined reference variables
+    actorvar ref1  actorvar ref2  actorvar ref3  actorvar ref4  actorvar ref5  actorvar ref6  actorvar ref7  actorvar ref8
+value /actor
+
+
 
 ( --== Assumption ==-- )
 
@@ -574,7 +576,7 @@ create drawlist 1023 cells /allot
     field does> @ tool @> + ;
 
 /systemblock
-    #96 toolfield toolSource
+    #128 toolfield toolSource
     #32 toolfield starter  \ word
     #32 toolfield resumer  \ word
     #16 toolfield vocab    \ word
