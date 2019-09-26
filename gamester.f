@@ -36,7 +36,7 @@ define Gamester
 /image buffer: image
 create blkpath  #256 allot
 depth 0 = [if] s" default.blk" [then]
-    blkpath place
+    project count 2swap strjoin blkpath place
 : revert  blkpath count image /image @file ;
 : save    image /image blkpath count file! ;
 :make bye   save  al_uninstall_system  0 ExitProcess ;

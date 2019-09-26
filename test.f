@@ -2,6 +2,9 @@
 \ done interactively by the user, while the engine is running, perhaps
 \ with GUI-based tools.
 
+empty
+s" default.blk" ld prg/gamester/gamester
+
 quit
 image /image erase
 
