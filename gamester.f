@@ -28,6 +28,8 @@ define Gamester
 \ TBD: PROJECT needs to be cleared in exported games.
 : >dataPath     project count s" data/" strjoin 2swap strjoin ;
 : >rolePath     project count s" roles/" strjoin 2swap strjoin ;
+: ?datapath   2dup s" /" search nip nip if project count 2swap strjoin ;then  >dataPath ;
+: ?rolePath   2dup s" /" search nip nip if project count 2swap strjoin ;then  >rolePath ;
 
 ( --== block image ==-- )
 
@@ -38,15 +40,18 @@ depth 0 = [if] s" default.blk" [then]
     blkpath place
 
 : (blkpath)  project count blkpath count strjoin ;
-(blkpath) file-exists not [if]
-    (blkpath) r/w create-file drop close-file drop 
-[then]
-
 : revert  (blkpath) image /image @file ;
 : save    image /image (blkpath) file! ;
 :make bye   save  al_uninstall_system  0 ExitProcess ;
 
-revert
+(blkpath) file-exists not [if]
+    (blkpath) r/w create-file drop close-file drop
+    save
+[else]
+    revert
+[then]
+
+
 
 
 ( --== block stuff ==-- )
@@ -240,7 +245,7 @@ constant /pic
 
 : load-pic  ( pic - )
     >r
-        r@ path ccount >dataPath echo zstring al_load_bitmap  r@ handle !
+        r@ path ccount ?datapath echo zstring al_load_bitmap  r@ handle !
     r> drop
 ;
 
@@ -404,7 +409,7 @@ value /actor
 ;
 : load-role  ( role - )
     >r
-        r@ path ccount >rolePath included
+        r@ path ccount ?rolePath included
     r> drop
 ;
 : add-role ( - <name> <path> )
@@ -665,6 +670,7 @@ defer resume
     tool @ if resume else quit then
 ;
 
+cr .( Gamester: Loading block file... )
 warm
 
-cr .( Loaded Blocks4.)
+cr .( Gamester: Done!  )

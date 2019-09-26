@@ -1,7 +1,10 @@
 empty
 
 : blockfile  s" mapster-dev.blk" ;
-project count blockfile strjoin delete-file drop
+: prj-blockfile  project count blockfile strjoin ;
+prj-blockfile  file-exists [if]
+    prj-blockfile  16 megs 0file
+[then]
 blockfile ld prg/gamester/gamester
 
 quit
@@ -10,13 +13,13 @@ displaywh 3 3 2/ resolution
 playfield init-scene
 playfield gameSlew >!
 
-add-pic myconid myconids.pngx
-add-pic overworld overworld-tiles.png
-add-pic willy willyworm.png
+add-pic myconid ../data/myconids.png
+add-pic overworld ../data/overworld-tiles.png
+add-pic willy ../data/willyworm.png
 
-import  myconid myconid.f
-import  willy willy.f
-import  camera camera.f
+import  myconid ../roles/myconid.f
+import  willy ../roles/willy.f
+import  camera ../roles/camera.f
 
 pic( willy ) to this
     set-animation 1   0 1 2 1
@@ -43,3 +46,5 @@ install prg/gamester/tools/mapster.f mapster2
 
 run mapster
 mytilemap pic( overworld ) layer init-layer
+
+cr .( Finished loading test code.) 

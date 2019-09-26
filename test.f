@@ -5,8 +5,12 @@
 empty
 
 : blockfile  s" default.blk" ;
-project count blockfile strjoin delete-file drop
+: prj-blockfile  project count blockfile strjoin ;
+prj-blockfile  file-exists [if]
+    prj-blockfile  16 megs 0file
+[then]
 blockfile ld prg/gamester/gamester
+
 
 quit
 image /image erase
