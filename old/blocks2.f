@@ -27,7 +27,7 @@ cr . .( blocks used)
 : class  #32 * classes block + ;  \ class 0 is reserved for some variables
 : class>name  count ;
 : class>details  #28 + @ ;
-: class>script  class>name  s" prg/blocks/" s[   +S  s" .f" +S  ]s ;
+: class>script  class>name  s" prg/gamester/" s[   +S  s" .f" +S  ]s ;
 
 
 \ : block-variable  ( block# offset - block# offset+cell )
@@ -50,7 +50,7 @@ cr . .( blocks used)
         class>script included ;
 
 
-: path  s" prg/blocks/test.blk" ;
+: path  s" prg/gamester/test.blk" ;
 : write  blocks swap block swap path file! ;
 : flush  work 64 megs path file! ;
 : cache

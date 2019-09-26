@@ -2,7 +2,7 @@ depend ramen/lib/a.f
 
 64 megs buffer: image
 create blkpath  #256 allot
-s" prg/blocks/test.blk" blkpath place
+s" prg/gamester/test.blk" blkpath place
 : revert  blkpath count image 64 megs @file ;
 : save    image 64 megs blkpath count file! ;
 revert
@@ -177,6 +177,6 @@ var sbh
 var p1 var p2 var p3 var p4 var p5 var p6 var p7 var p8
 var p9 var p10 var p11 var p12 var p13 var p14 var p15 var p16
 
-ld prg/blocks/runtime
+ld prg/gamester/runtime
 
 cr .( Loaded blocks3 )

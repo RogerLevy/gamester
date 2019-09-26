@@ -1,7 +1,7 @@
 
 define-tool mapster [if]
     
-    depend prg/blocks/apptools.f
+    depend prg/gamester/apptools.f
     
     /tool
     cell toolfield >palette         \ block #

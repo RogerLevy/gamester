@@ -1,4 +1,4 @@
-depend prg/blocks/globals.f
+depend prg/gamester/globals.f
 depend ramen/lib/std/kb.f
 
 : loc  16 16 2/ 2pfloor 0 0 2max 511 511 2min 512 * + cells + ;
