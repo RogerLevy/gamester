@@ -45,15 +45,14 @@ define-tool mapster [if]
     : outline  w 2@ sx 2@ 2*  2dup  white rect  -1 -1 +at  2 2 2+ black rect ;
 
     : scrollx  layer scroll-offset ;
-    : tsize  layer tileset-pic @> subsize @ ;
     : tilebuf  layer tilemap-block @> ;
 
     : box  x 2@   w 2@ sx 2@ 2*   aabb 1 1 2- ;
-    : (adr)  mapa @> { maus x 2@ 2- sx 2@ 2/ scrollx 2@ 2+ tsize dup 2/ tilebuf adr } ;
+    : (adr)  mapa @> { maus x 2@ 2- sx 2@ 2/ scrollx 2@ 2+ 16 16 2/ tilebuf adr } ;
     : that   (adr) @ tile# ! ;
     : lay  tile# @ (adr) ! ;
     : mpos  maus x 2@ 2- sx 2@ 2/ ;
-\    : pick   mpos tb subwh 2/ 2pfloor tb subcols * + 1 + tile# ! ;
+    : pick   mpos  16 16 2/ 2pfloor 16 * + tile# ! ;
 \    : crayon  curColor  img @ >bmp  mpos 2i  al_get_pixel ;
 \    : paint  selection 2drop rot onto> mpos 2+ 2i curColor 4@ al_put_pixel ;
 \    : eyedrop  curColor selection 2drop mpos 2+ 2i al_get_pixel ;
@@ -83,7 +82,11 @@ define-tool mapster [if]
     kind: tilesetk
         :draw  layer tileset-pic @> -exit
             layer tileset-pic @> handle @ bmpwh w 2!
-            layer tileset-pic @> handle @ blit ;
+            layer tileset-pic @> handle @ blit
+        ;
+        :logic
+            lb interact? if  pick  ;then
+        ;
     drop
     
     kind: tilek

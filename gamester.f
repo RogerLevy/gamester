@@ -153,36 +153,6 @@ cell global lasttool     \ last tool that was RUN (block#)
     each> cr dup @ #-1 = if h. else >nfa ccount type then ;
 
 
-( ~~~~ data structure explanation ~~~ )
-
-( A bank is 1024 blocks. )
-( The first 16 banks are reserved for the engine. )
-( You should name all of your banks via BANK . )
-
-( A record is 16 bytes. They can hold 1-4 numbers or a string up to 15 chars. )
-( Records can sometimes occupy multiple slots. )
-( Not every kind of block uses records, for example actors. )
-
-( Tilemaps are 512x512-tile arrays [1 tile = 1 cell], taking up a single bank slot. )
-( A scene brings tilemaps and actors together.  A bitmask selects which of a bank of
-( actors will be included in the scene.  )
-
-( An animation is 16 bytes, a count and up to 14 indexes plus a loop offset. )
-( Actually you can define an animation that's longer than 14, it just will spill }
-( into the next animation slot, making it unusable for its own animation. )
-
-( A slew is a scene combined with a bank of actors. )
-
-( There are a maximum of 1023 of each of the following: )
-( - Pics )
-( - Scenes )
-( - Sounds, including BGM's )
-( - Roles )
-( - Templates )
-( - Actors in a slew )
-
-( The number of available banks is dependent on the image size. )
-
 ( --== Engine memory layout ==-- )
 
 0 bank system
@@ -256,10 +226,8 @@ constant /pic
     this load-pic
 ;
 
-decimal
 : draw-tile  ( n pic - )  
-    over >r dup >r  handle @   swap 16.0 /mod 4 lshift swap 4 lshift swap r> subsize 2@  r> 28 rshift bblit ;
-fixed
+    over >r dup >r  handle @   swap 16 /mod #4 lshift swap #4 lshift swap r> subsize 2@  r> #28 rshift bblit ;
 
 
 ( --== Tilemap stuff ==-- )
@@ -660,7 +628,7 @@ defer resume
     >in @ postpone [undefined] swap >in !
     define
 ;
-    
+
 ( ~~~~~~~~~~~~~~~~~~~~~~~~~ )
 
 : warm
