@@ -4,24 +4,24 @@ define-tool mapster [if]
     depend prg/gamester/apptools.f
     
     /tool
-    cell toolfield >palette         \ block #
-    /layer toolfield layer
-    cell toolfield tile#
-    4 cells toolfield fg            \ pen color
-    cell toolfield tileseta
-    cell toolfield mapa
-    cell toolfield tilea
-    cell toolfield colora
-    cell toolfield pala
-    cell toolfield hilitea
+        cell toolfield >palette         \ block #
+        /layer toolfield layer
+        cell toolfield tile#
+        4 cells toolfield fg            \ pen color
+        cell toolfield tileseta
+        cell toolfield mapa
+        cell toolfield tilea
+        cell toolfield colora
+        cell toolfield pala
+        cell toolfield hilitea
     drop
     
     /actor
-    var kind#
-    var w
-    var h
-    var sx
-    var sy
+        actorvar kind#
+        actorvar w
+        actorvar h
+        actorvar sx
+        actorvar sy
     drop
     
     : @color  fg fore 4 cells move ;

@@ -364,7 +364,7 @@ value /actor
 
 ( --== Role stuff ==-- )
 
-/assetheader value /roleheader
+#256 value /roleheader
 #512 0 field vectors drop
 1 value nextVector#  \ 0 state is NOOP
 
@@ -372,7 +372,6 @@ value /actor
 : runvec  ( ... n - ... )   >role @> vectors vexec ;
 : act  woke @ -exit  state# @ runvec ;
 : already  defined if >body cell+ @ $01234567 = ;then  drop false ;
-: rolefield  create /roleheader , +to /roleheader does> @ + ;
 : (?action)
     >in @ already if drop ;then
         >in ! create nextVector# , $01234567 , 1 +to nextVector#
