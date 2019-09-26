@@ -403,7 +403,6 @@ value /actor
 drop #128 value /layer  
 
 blockstruct
-    \record >slew      \ block# (unused)
     record scenemask   \ bitmask that defines which actors will be copied when loading to this scene
     record bgm         \ ( TBD ) probably a general sound #, which can optionally stream a file
                        \ could add extra params like volume and pitch
@@ -415,7 +414,7 @@ value /sceneheader
     /layer field layer1
     /layer field layer2
     /layer field layer3
-value /scene
+drop
 
 create layer-template  /layer /allot
 layer-template to this
@@ -609,11 +608,11 @@ defer resume
     tool @> named
     tool @> load-tool
 ;
-: contextualize  only forth also Gamester also  vocab ccount evaluate ;
+: contextualize  only forth also Gamester also  vocab ccount evaluate  definitions ;
 :make resume ( -- )
     lasttool @ if lasttool @ tool ! then 
     tool @ 0 = if drop ;then
-    contextualize
+    contextualize  
     resumer ccount evaluate
 ;
 : run ( -- <name> )

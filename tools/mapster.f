@@ -63,14 +63,22 @@ define-tool mapster [if]
             mdelta globalscale dup 2/ sx 2@ 2/ 2negate scrollx 2@ 2+ layer limit-scroll scrollx 2!
         } ;
 
- 
+
+    ( --== Commandline ==-- )
+    
+    : load  ( scene - )
+        tool-scene 1 copy
+        tool-scene layer0 layer /layer move
+        tool-scene layer0 /layer erase ;
+
+
+    ( --== Elements ==-- )
 
     kind: mapk
         :draw
             layer tileset-pic @> -exit
-            0 0 256 256 layer viewport 4!
             tileseta @> beside  ( outline )
-            x 2@ layer viewport xy!
+            x 2@ 256 256 layer viewport 4!
             0 0 layer draw-layer
         ;
         :logic
