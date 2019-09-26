@@ -7,7 +7,6 @@
 
 [defined] save [if] save [then]
 
-empty
 only forth definitions
 \ depend ws/ws.f
 depend ramen/lib/rsort.f
@@ -36,9 +35,15 @@ define Gamester
 /image buffer: image
 create blkpath  #256 allot
 depth 0 = [if] s" default.blk" [then]
-    project count 2swap strjoin blkpath place
-: revert  blkpath count image /image @file ;
-: save    image /image blkpath count file! ;
+    blkpath place
+
+: (blkpath)  project count blkpath count strjoin ;
+(blkpath) file-exists not [if]
+    (blkpath) r/w create-file drop close-file drop 
+[then]
+
+: revert  (blkpath) image /image @file ;
+: save    image /image (blkpath) file! ;
 :make bye   save  al_uninstall_system  0 ExitProcess ;
 
 revert

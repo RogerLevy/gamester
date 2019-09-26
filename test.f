@@ -3,7 +3,10 @@
 \ with GUI-based tools.
 
 empty
-s" default.blk" ld prg/gamester/gamester
+
+: blockfile  s" default.blk" ;
+project count blockfile strjoin delete-file drop
+blockfile ld prg/gamester/gamester
 
 quit
 image /image erase

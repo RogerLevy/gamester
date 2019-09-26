@@ -1,14 +1,16 @@
 empty
-s" mapster-dev.blk" ld prg/gamester/gamester
+
+: blockfile  s" mapster-dev.blk" ;
+project count blockfile strjoin delete-file drop
+blockfile ld prg/gamester/gamester
 
 quit
-image /image erase
 
 displaywh 3 3 2/ resolution
 playfield init-scene
 playfield gameSlew >!
 
-add-pic myconid myconids.png
+add-pic myconid myconids.pngx
 add-pic overworld overworld-tiles.png
 add-pic willy willyworm.png
 
