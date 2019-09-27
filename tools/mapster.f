@@ -3,7 +3,7 @@ define-tool mapster [if]
     
     depend prg/gamester/apptools.f
     
-    /tool
+    toolstruct
         cell toolfield >palette         \ block #
         /layer toolfield layer
         cell toolfield tile#
@@ -16,7 +16,7 @@ define-tool mapster [if]
         cell toolfield hilitea
     drop
     
-    /actor
+    actorstruct
         actorvar kind#
         actorvar w
         actorvar h

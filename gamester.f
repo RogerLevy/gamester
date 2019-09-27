@@ -16,6 +16,13 @@ depend venery/venery.f
 
 define Gamester
 
+( --== Variables ==-- )
+
+1 value nextVector#  \ 0 state is NOOP
+0 value me
+0 value this
+0 value installing?
+
 ( --== Utilities ==-- )
 
 : |  postpone locals| ; immediate
@@ -52,8 +59,6 @@ depth 0 = [if] s" default.blk" [then]
 [then]
 
 
-
-
 ( --== block stuff ==-- )
 
 : block  #2 rshift image + ;
@@ -86,25 +91,114 @@ blockstruct
     record systemType   \ word
 drop #64 constant /systemblock  
 
+( --== Structures ==-- )
 
-( --== Globals ==-- )
+#1024 1024 * constant /bank
 
-blockstruct value /system
+blockstruct
+    record path 7 reserve
+    record handle
+constant /assetheader    
 
-: system  0 block ;  \ kludge, redefined in more logical way below
-: global  /system swap field to /system does> @ system + ;
-: \global  +to /system  0 parse 2drop ;
+/assetheader constant /roleheader
+#256 constant rolestruct
+#512 0 field vectors drop
 
-cell global gameSlew     \ current slew (block)
-cell global tool         \ current tool  (block)
-cell global nextid       \ next global ID (incremented by ONE)
-cell global lasttool     \ last tool that was RUN (block#)
-#512 to /system
+0
+    record tilemap-config   ( block#, tileset-pic )
+    : tilemap-block   tilemap-config ;
+    : tileset-pic     tilemap-config cell+ ;
+    record parallax         ( x, y )
+    record scroll-offset    ( x, y )
+    record bounds           ( x, y, w, h ) 
+    record viewport         ( x, y, w, h ) 
+drop #128 constant /layer  
 
+blockstruct
+    record scenemask   \ bitmask that defines which actors will be copied when loading to this scene
+    record bgm         \ ( TBD ) probably a general sound #, which can optionally stream a file
+                       \ could add extra params like volume and pitch
+    record scroll
+    record res
+constant /sceneheader
+#512
+    /layer field layer0 
+    /layer field layer1
+    /layer field layer2
+    /layer field layer3
+constant /scene
+
+create layer-template  /layer /allot
+layer-template to this
+    1 1 this parallax 2!
+    0 0 8192 8192 this bounds 4!
+    0 0 viewwh this viewport 4!
+
+create mestk  0 , 16 cells allot
+: actorvar  ( offset -- <name> offset+cell )  cell field  does>  @ me + ;
+: alias  ( - <old> <new> ) ' >body @ field drop  does> @ me + ;
+
+\ SET works with these.
+
+blockstruct
+    actorvar zorder
+    actorvar scenebits  \ defines which scenes this actor will appear in
+    actorvar dead    \ if on, will be deleted at end of frame.
+    actorvar x
+    actorvar y
+    actorvar vx
+    actorvar vy
+    actorvar tintr
+    actorvar tintg
+    actorvar tintb
+    actorvar tinta
+    actorvar sx
+    actorvar sy
+    actorvar rtn
+    actorvar >role
+    actorvar state#
+    actorvar >pic
+    actorvar sub#
+    actorvar anim#   
+    actorvar animctr
+    actorvar rate    \ animation speed
+    actorvar woke    \ if woke is off, state isn't executed.
+    actorvar hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solid hitbox)
+constant simplestruct      \ for particles and environments
+
+#256
+    actorvar rolename #12 +
+    actorvar attr    \ attribute flags
+    actorvar ctype   \ collision flags
+    actorvar cmask   \ collision mask
+    actorvar ibx     \ interaction hitbox
+    actorvar iby
+    actorvar ibw
+    actorvar ibh
+    actorvar sbx     \ solid hitbox
+    actorvar sby
+    actorvar sbw
+    actorvar sbh
+    actorvar ref1  actorvar ref2  actorvar ref3  actorvar ref4  actorvar ref5  actorvar ref6  actorvar ref7  actorvar ref8
+drop #512 constant commonvars
+
+\ the remaining space is considered "volatile" and this is where roles should define their vars
+#768 0 field volatile constant volatilevars
+
+: system  0 block ;     \ kludge; redefined in more logical way below
+: global  field does> @ system + ;
+: \global  +  0 parse 2drop ;
+
+blockstruct
+    cell global gameSlew     \ current slew (block)
+    cell global tool         \ current tool  (block)
+    cell global nextid       \ next global ID (incremented by ONE)
+    cell global lasttool     \ last tool that was RUN (block#)
+drop
+#256 constant globals
 
 ( --== bank stuff ==-- )
 
-#1024 1024 * constant /bank
 : >bank  ( block - bank )   image /bank mod - dup   /bank mod -  image /bank mod + ;
 : bank   create   ( start: ) 1024 * ,  does> @ block ;
 : >first  ( bank - adr ) block+ ;
@@ -168,7 +262,6 @@ cell global lasttool     \ last tool that was RUN (block#)
 
 ( --== basic editing tools ==-- )
 
-0 value this
 : num  <word> evaluate ;
 : edit  ( adr - )    to this   this #128 dump ;
 : set  this offset+ a!>
@@ -182,15 +275,6 @@ cell global lasttool     \ last tool that was RUN (block#)
 ;
 : what's  this offset+ dup 4@ 4. #16 dump ;
 : print  this offset+ ccount type ;
-
-
-( --== asset stuff ==-- )
-
-blockstruct
-    record path 7 reserve
-    record handle
-value /assetheader    
-
 
 
 ( --== Pic stuff ==-- )
@@ -251,64 +335,6 @@ constant /pic
 
 ( --== Actor stuff ==-- )
 
-0 value me
-create mestk  0 , 16 cells allot
-
-: actorvar  ( offset -- <name> offset+cell )  cell field  does>  @ me + ;
-: alias  ( - <old> <new> ) ' >body @ field drop  does> @ me + ;
-
-\ SET works with these.
-
-blockstruct
-    actorvar zorder
-    actorvar scenebits  \ defines which scenes this actor will appear in
-    actorvar dead    \ if on, will be deleted at end of frame.
-    actorvar x
-    actorvar y
-    actorvar vx
-    actorvar vy
-    actorvar tintr
-    actorvar tintg
-    actorvar tintb
-    actorvar tinta
-    actorvar sx
-    actorvar sy
-    actorvar rtn
-    actorvar >role
-    actorvar state#
-    actorvar >pic
-    actorvar sub#
-    actorvar anim#   
-    actorvar animctr
-    actorvar rate    \ animation speed
-value /simple  \ for particles
-
-#128
-    actorvar rolename #12 +
-    actorvar woke    \ if woke is off, state isn't executed.
-    actorvar hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solid hitbox)
-    actorvar attr    \ attribute flags
-    actorvar ctype   \ collision flags
-    actorvar cmask   \ collision mask
-    actorvar ibx     \ interaction hitbox
-    actorvar iby
-    actorvar ibw
-    actorvar ibh
-    actorvar sbx     \ solid hitbox
-    actorvar sby
-    actorvar sbw
-    actorvar sbh
-
-    \ predefined common variables
-    actorvar var1  actorvar var2   actorvar var3   actorvar var4   actorvar var5   actorvar var6   actorvar var7   actorvar var8
-    actorvar var9  actorvar var10  actorvar var11  actorvar var12  actorvar var13  actorvar var14  actorvar var15  actorvar var16
-value /common
-
-#768  \ the remaining space is considered "volatile" and can be cleared at any time by the engine.
-    \ predefined reference variables
-    actorvar ref1  actorvar ref2  actorvar ref3  actorvar ref4  actorvar ref5  actorvar ref6  actorvar ref7  actorvar ref8
-value /actor
-
 
 
 ( --== Assumption ==-- )
@@ -341,10 +367,6 @@ value /actor
     swap to xt each> as xt execute ;
 
 ( --== Role stuff ==-- )
-
-#256 value /roleheader
-#512 0 field vectors drop
-1 value nextVector#  \ 0 state is NOOP
 
 : vexec  swap cells + @ execute ;
 : runvec  ( ... n - ... )   >role @> vectors vexec ;
@@ -391,36 +413,6 @@ value /actor
 
 
 ( --== Scene stuff ==-- )
-
-0
-    record tilemap-config   ( block#, tileset-pic )
-    : tilemap-block   tilemap-config ;
-    : tileset-pic     tilemap-config cell+ ;
-    record parallax         ( x, y )
-    record scroll-offset    ( x, y )
-    record bounds           ( x, y, w, h ) 
-    record viewport         ( x, y, w, h ) 
-drop #128 value /layer  
-
-blockstruct
-    record scenemask   \ bitmask that defines which actors will be copied when loading to this scene
-    record bgm         \ ( TBD ) probably a general sound #, which can optionally stream a file
-                       \ could add extra params like volume and pitch
-    record scroll
-    record res
-value /sceneheader
-#512
-    /layer field layer0 
-    /layer field layer1
-    /layer field layer2
-    /layer field layer3
-drop
-
-create layer-template  /layer /allot
-layer-template to this
-    1 1 this parallax 2!
-    0 0 8192 8192 this bounds 4!
-    0 0 viewwh this viewport 4!
 
 : init-scene ( scene - ) 
     >r
@@ -546,8 +538,6 @@ create drawlist 1023 cells /allot
 
 ( --== Tools stuff pt 1 ==-- )
 
-0 value installing?
-
 : toolfield  ( size -- <name> )
     field does> @ tool @> + ;
 
@@ -557,7 +547,7 @@ create drawlist 1023 cells /allot
     #32 toolfield resumer  \ word
     #16 toolfield vocab    \ word
     cell toolfield >toolScene
-constant /tool
+constant toolstruct
 
 : load-tool  ( tool -- )
     tool @> >r  tool >!

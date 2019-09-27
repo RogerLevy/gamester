@@ -1,3 +1,5 @@
 ( --== application-specific globals ==-- )
 
-cell global camera
+globals
+    cell global camera
+drop
