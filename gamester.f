@@ -1,5 +1,4 @@
-\ Conventions:
-\  Stack diagram: ( @ - @ ) @ = a block #
+\ Version 1.0
 
 \ TODO:
 \ [x] Bank's cursors should be stored in the image not in the dictionary.
@@ -88,8 +87,10 @@ depth 0 = [if] s" default.blk" [then]
 drop #32 constant blockstruct
 
 blockstruct
-    record systemType   \ word
-drop #64 constant /systemblock  
+    record moduleType   \ word
+    record vocab        \ word
+    #64 field source
+drop #128 constant modulestruct
 
 ( --== Structures ==-- )
 
@@ -99,10 +100,6 @@ blockstruct
     record path 7 reserve
     record handle
 constant /assetheader    
-
-/assetheader constant /roleheader
-#256 constant rolestruct
-#512 0 field vectors drop
 
 0
     record tilemap-config   ( block#, tileset-pic )
@@ -197,6 +194,20 @@ blockstruct
 drop
 #256 constant globals
 
+: toolfield  ( size -- <name> )
+    field does> @ tool @> + ;
+
+modulestruct
+    #32 toolfield starter  \ word
+    #32 toolfield resumer  \ word
+    cell toolfield >toolScene
+drop #256 constant toolstruct
+
+modulestruct
+drop #256 constant rolestruct
+#512 0 field vectors drop
+
+
 ( --== bank stuff ==-- )
 
 : >bank  ( block - bank )   image /bank mod - dup   /bank mod -  image /bank mod + ;
@@ -255,8 +266,8 @@ drop
 3 bank scene
 4 bank template  \ a place to store actors for instantiating multiple times in different stages
 5 bank role      \ like classes, but just for actors
-6 bank gui       \ slew; default for tool actors
-8 bank playfield \ slew; default for game actors
+6 bank gui       \ slew for the current tool to use (cleared by RUN)
+8 bank playfield \ slew; default for game actors 
 
 
 
@@ -538,17 +549,7 @@ create drawlist 1023 cells /allot
 
 ( --== Tools stuff pt 1 ==-- )
 
-: toolfield  ( size -- <name> )
-    field does> @ tool @> + ;
-
-/systemblock
-    #128 toolfield toolSource
-    #32 toolfield starter  \ word
-    #32 toolfield resumer  \ word
-    #16 toolfield vocab    \ word
-    cell toolfield >toolScene
-constant toolstruct
-
+: toolSource  tool @> source ;
 : load-tool  ( tool -- )
     tool @> >r  tool >!
     warning on
@@ -590,7 +591,7 @@ defer resume
     true to installing?
     quit
     system one tool >!
-    s" tool" tool @> systemType cplace
+    s" tool" tool @> moduleType cplace
     scene one
         dup init-scene
         >toolScene >!
@@ -598,7 +599,10 @@ defer resume
     tool @> named
     tool @> load-tool
 ;
-: contextualize  only forth also Gamester also  vocab ccount evaluate  definitions ;
+
+: toolVocab  tool @> vocab ;
+
+: contextualize  only forth also Gamester also  toolVocab ccount evaluate  definitions ;
 :make resume ( -- )
     lasttool @ if lasttool @ tool ! then 
     tool @ 0 = if drop ;then
@@ -613,7 +617,7 @@ defer resume
 ;
 : define-tool  ( - <name> flag )  \ defines a vocab and assigns it to the current tool
     only forth also Gamester definitions
-    <name> vocab cplace
+    <name> toolVocab cplace
     >in @ postpone [undefined] swap >in !
     define
 ;

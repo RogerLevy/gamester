@@ -16,7 +16,7 @@ define-tool mapster [if]
         cell toolfield hilitea
     drop
     
-    actorstruct
+    volatilevars
         actorvar kind#
         actorvar w
         actorvar h
@@ -145,5 +145,5 @@ installing? [if]
     s" resume-mapster" resumer cplace
     displaywh 2 2 2/ tool-scene res 2!
     white fore 4@ fg 4!
-    system one s" palette" third systemType cplace >palette !
+    system one s" palette" third moduleType cplace >palette !
 [then]
