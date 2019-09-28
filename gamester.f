@@ -73,7 +73,7 @@ depth 0 = [if] s" default.blk" [then]
 : claim  on ;
 : >nfa   ;
 : copy  blocks move ;
-: delete  #1 swap c! ;
+: delete  0 swap c! ;
 : >!  swap block> swap ! ;
 : @>  @ block ;
 
