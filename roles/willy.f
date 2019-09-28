@@ -1,6 +1,8 @@
 depend prg/gamester/shared.f
 depend ramen/lib/std/kb.f
 
+define-role willy willying
+
 : loc  16 16 2/ 2pfloor 0 0 2max 511 511 2min 512 * + cells + ;
 
 : plot  1p stage layer0 tilemap-block @> x 2@ 8 8 2+ loc ! ;

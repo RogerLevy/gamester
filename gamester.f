@@ -3,6 +3,8 @@
 \ TODO:
 \ [x] Bank's cursors should be stored in the image not in the dictionary.
 \ [ ] SET needs to work with block ref vars
+\ [ ] :ACTION and :STATE should only set XT if no errors during compilation 
+
 
 [defined] save [if] save [then]
 
@@ -15,9 +17,10 @@ depend venery/venery.f
 
 define Gamester
 
+: common  only forth also Gamester definitions ;
+
 ( --== Variables ==-- )
 
-1 value nextVector#  \ 0 state is NOOP
 0 value me
 0 value this
 0 value installing?
@@ -30,6 +33,7 @@ define Gamester
 : skip      <word> 2drop ;
 : echo  cr 2dup type ;
 : 4. 2swap 2. 2. ;
+: vexec  ( ... n vtable - ... ) swap cells + @ execute ;
 
 \ TBD: PROJECT needs to be cleared in exported games.
 : >dataPath     project count s" data/" strjoin 2swap strjoin ;
@@ -99,7 +103,7 @@ drop #128 constant modulestruct
 blockstruct
     record path 7 reserve
     record handle
-constant /assetheader    
+drop #256 constant assetstruct
 
 0
     record tilemap-config   ( block#, tileset-pic )
@@ -191,8 +195,10 @@ blockstruct
     cell global tool         \ current tool  (block)
     cell global nextid       \ next global ID (incremented by ONE)
     cell global lasttool     \ last tool that was RUN (block#)
+    cell global actionOffset
+    cell global stateOffset
 drop
-#256 constant globals
+#128 constant globals
 
 : toolfield  ( size -- <name> )
     field does> @ tool @> + ;
@@ -204,8 +210,8 @@ modulestruct
 drop #256 constant toolstruct
 
 modulestruct
+    cell field vtable       \ handle
 drop #256 constant rolestruct
-#512 0 field vectors drop
 
 
 ( --== bank stuff ==-- )
@@ -229,7 +235,7 @@ drop #256 constant rolestruct
 : named  ( block - <name> )
     <word> rot >nfa cplace ;
 
-: (?$)  ( bank - <name> adr|0 )
+: (?$)  ( bank - <name> adr|0 )  \ <name> isn't consumed
     >first
     1023 for
         dup >nfa ccount
@@ -239,10 +245,11 @@ drop #256 constant rolestruct
         block+
     loop   drop  0
 ;
-: ($)  (?$) dup 0 = abort" Not found!" ;
-
+: ($)  (?$) dup 0 = abort" Block not found!" ;  \ <name> isn't consumed
+ 
 : $(  ( - <bank> <name> adr )  \ find a named block; ex: $( pic myconid )
     ' execute ($) skip ; immediate
+    
 : clear-bank  ( bank - )
     0 over !  \ reset cursor
      >first 1023 blocks erase ;
@@ -267,11 +274,30 @@ drop #256 constant rolestruct
 4 bank template  \ a place to store actors for instantiating multiple times in different stages
 5 bank role      \ like classes, but just for actors
 6 bank gui       \ slew for the current tool to use (cleared by RUN)
+7 bank env       \ offset constants for actions & states, and other miscellanea
 8 bank playfield \ slew; default for game actors 
 
 
+( --== Constant storage ==-- )
 
-( --== basic editing tools ==-- )
+blockstruct
+    record kind
+    record data
+constant /constant
+
+: (env)  ( kind c - <name> adr )   \ address is of the value
+    locals| c k |
+    env (?$) ?dup if
+        skip k c third kind ccount compare 0= if  data  ;then
+        true abort" Found constant is of the wrong kind."
+    then
+    env one dup named
+    k c third kind cplace
+    data ;
+    
+
+
+( --== Experimental editing tools ==-- )
 
 : num  <word> evaluate ;
 : edit  ( adr - )    to this   this #128 dump ;
@@ -290,7 +316,7 @@ drop #256 constant rolestruct
 
 ( --== Pic stuff ==-- )
 
-/assetheader
+assetstruct
     record subsize
     0 field animations
 constant /pic
@@ -359,6 +385,10 @@ constant /pic
 
 ( --= Template stuff ==-- )
 
+: add-template  ( - <name> )
+    template one dup as  named  
+;
+
 : instance  ( template slew -- actor )
     one {
         me 1 copy
@@ -379,47 +409,71 @@ constant /pic
 
 ( --== Role stuff ==-- )
 
-: vexec  swap cells + @ execute ;
-: runvec  ( ... n - ... )   >role @> vectors vexec ;
+: runvec  ( ... ofs - ... )   >role @> vtable @ + @ execute ;
 : act  woke @ -exit  state# @ runvec ;
-: already  defined if >body cell+ @ $01234567 = ;then  drop false ;
-: (?action)
-    >in @ already if drop ;then
-        >in ! create nextVector# , $01234567 , 1 +to nextVector#
-        does>  @ runvec
+: already  >in @ >r defined r> >in ! if >body cell+ @ $01234567 = ;then  drop false ;
+: (create)
+    get-order get-current
+    common
+    create
+    set-current set-order
 ;
-: ?action  >in @ (?action) >in ! ;
-: (?state)
-    >in @ already if drop ;then
-        >in ! create nextVector# , $01234567 , 1 +to nextVector#
-        does>  woke on @ dup state# ! runvec
+
+: ?action
+    already ?exit
+    >in @ >r 
+    s" action" (env) dup @ 0 = if
+        cell actionOffset +! 
+        actionOffset @ swap !  
+        r> >in !  (create) actionOffset @ , $01234567 ,
+    else
+        r> >in !  (create) @ , $01234567 , 
+    then 
+    does>  @ runvec
 ;
-: ?state >in @ (?state) >in ! ;
-: ?alias  ( xt - xt ) \ if alias return the XT it points to
-    dup >body cell+ @ $C0FFEE = if @ then
+: ?state
+    already ?exit
+    >in @ >r 
+    s" state" (env) dup @ 0 = if
+        cell stateOffset +! 
+        stateOffset @ swap !  
+        r> >in !  (create) stateOffset @ 256 cells + , $01234567 ,
+    else
+        r> >in !  (create) @ 256 cells + , $01234567 , 
+    then 
+    does>  woke on @ dup state# ! runvec
 ;
-: action: ( - <role> <name/alias> ...code... ; ) ( ... - ... ) \ doesn't set state#
-    role ($) 
-    ?action  \ create if doesn't exist
-    vectors ' ?alias >body @ cells + :noname swap !  \ TBD : should only set if compilation is without errors
-;
-: state:  ( - <role> <name/alias> ...code... ; ) ( - ) \ sets state#
-    role ($) 
-    ?state  \ create if doesn't exist
-    vectors ' ?alias >body @ cells + :noname swap ! 
+: action: ( - <role> <name> ...code... ; ) ( ... - ... ) 
+    role ($)
+        >in @ ?action >in !
+        vtable @ ' >body @ + :noname swap !  
+;   
+: state:  ( - <role> <name> ...code... ; ) ( - )
+    role ($)
+        >in @ >r ?state   r> >in ! 
+        vtable @ ' >body @ + :noname swap ! 
 ;
 : load-role  ( role - )
     >r
+        common
         r@ path ccount ?rolePath included
+    r> drop
+;
+: add-vtable ( role - )
+    here swap vtable ! 512 cells /allot
+;
+: define-role  ( - <role> <name> )  \ defines a vocab and assigns it to the current role
+    role ($) >r
+    r@ vtable @ 0 = if  r@ add-vtable  then
+    <name> r@ vocab cplace
+    define
     r> drop
 ;
 : add-role ( - <name> <path> )
     role one dup named   to this
-    <word> this path cplace
+    <name> this path cplace
     this load-role
-;
-: add-template  ( - <name> )
-    template one dup as  named  
+    common
 ;
 
 
@@ -497,6 +551,8 @@ defer draw
 : animate  ( n speed - )
     rate ! 0 animctr ! anim# ! ;
 
+
+
 ( --== Z-sorted rendering ==-- )
 
 create drawlist 1023 cells /allot
@@ -553,7 +609,7 @@ create drawlist 1023 cells /allot
 : load-tool  ( tool -- )
     tool @> >r  tool >!
     warning on
-    only forth also Gamester definitions
+    common
     toolSource ccount included
     warning off
     r> tool >!
@@ -570,7 +626,7 @@ defer resume
 : asdf  quit ;
 
 : quit
-    only forth also Gamester definitions
+    common
     0 to 'step  0 to 'pump
     tool @ lasttool !
     tool off
@@ -615,8 +671,8 @@ defer resume
     contextualize
     starter ccount evaluate
 ;
-: define-tool  ( - <name> flag )  \ defines a vocab and assigns it to the current tool
-    only forth also Gamester definitions
+: define-tool  ( - <name> flag )  \ defines a vocab and assigns it to the current tool; returns true if it was already defined.
+    common
     <name> toolVocab cplace
     >in @ postpone [undefined] swap >in !
     define

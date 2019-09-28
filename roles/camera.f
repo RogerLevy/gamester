@@ -1,5 +1,7 @@
 depend ramen/lib/std/kb.f
 
+define-role camera cameraing
+
 : !scroll
     x 2@ stage layer0 limit-scroll x 2!
     x 2@ stage scroll 2!
