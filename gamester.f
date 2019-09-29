@@ -24,6 +24,7 @@ define Gamester
 0 value me
 0 value this
 0 value installing?
+defer save-assets  ( -- )  :make save-assets ;
 
 ( --== Utilities ==-- )
 
@@ -51,7 +52,7 @@ depth 0 = [if] s" default.blk" [then]
 
 : (blkpath)  project count blkpath count strjoin ;
 : revert  (blkpath) image /image @file ;
-: save    image /image (blkpath) file! ;
+: save    image /image (blkpath) file!  save-assets ;
 :make bye   save  al_uninstall_system  0 ExitProcess ;
 
 (blkpath) file-exists not [if]
@@ -103,6 +104,7 @@ drop #128 constant modulestruct
 blockstruct
     record path 7 reserve
     record handle
+    record modified
 drop #256 constant assetstruct
 
 0
@@ -336,7 +338,13 @@ constant /pic
 
 : load-pic  ( pic - )
     >r
-        r@ path ccount ?datapath echo zstring al_load_bitmap  r@ handle !
+        r@ path ccount ?datapath echo loadbmp r@ handle !
+    r> drop
+;
+
+: save-pic  ( pic - )
+    >r
+        r@ handle @  r@ path ccount ?datapath savebmp
     r> drop
 ;
 
@@ -347,8 +355,11 @@ constant /pic
     this load-pic
 ;
 
+: tile-region  ( n pic - x y w h )
+    >r 16 /mod #4 lshift swap #4 lshift swap r> subsize 2@ ;
+
 : draw-tile  ( n pic - )  
-    over >r dup >r  handle @   swap 16 /mod #4 lshift swap #4 lshift swap r> subsize 2@  r> #28 rshift bblit ;
+    over >r dup >r  handle @   swap r> tile-region  r> #28 rshift bblit ;
 
 
 ( --== Tilemap stuff ==-- )
@@ -561,20 +572,16 @@ create drawlist 1023 cells /allot
 : draws  ( slew - )
     gathered 2dup ['] zorder@ rsort swap a!> for @+ { draw act } loop ;
 
-: (resolution)  ( scene -- )
-    >r
-    r@ res 2@ or 0 = if viewwh r@ res 2! then
-    r> res 2@ resolution
-;
 : draw-scene ( scene - )
-    me >r >r
-    r@ (resolution)
+    me { >r
+    r@ res 2@ or 0 = if viewwh r@ res 2! then
+    r@ res 2@ resolution
     r@ scroll 2@ r@ layer0 draw-layer 
     r@ scroll 2@ r@ layer1 draw-layer 
     r@ draws
     r@ scroll 2@ r@ layer2 draw-layer 
     r@ scroll 2@ r@ layer3 draw-layer 
-    r> drop r> as
+    r> drop }
 ;
 
 
@@ -622,6 +629,9 @@ defer resume
 : load-pics    pic each> load-pic ;
 : load-roles   role each> load-role ;
 : load-systems system each>  false to installing? load-tool ;
+
+: save-pics    pic each> dup modified @ if dup modified off save-pic else drop then ;
+
 
 : asdf  quit ;
 
@@ -679,6 +689,11 @@ defer resume
 ;
 
 ( ~~~~~~~~~~~~~~~~~~~~~~~~~ )
+
+:make save-assets
+    save-pics
+;
+
 
 : warm
     load-pics
