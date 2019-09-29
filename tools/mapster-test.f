@@ -13,8 +13,8 @@ displaywh 3 3 2/ resolution
 playfield init-scene
 playfield gameSlew >!
 
-add-pic myconid ../data/myconids.png
 add-pic overworld ../data/overworld-tiles.png
+add-pic myconid ../data/myconids.png
 add-pic willy ../data/willyworm.png
 
 import  myconid ../roles/myconid.f
