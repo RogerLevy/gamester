@@ -50,7 +50,10 @@ create blkpath  #256 allot
 depth 0 = [if] s" default.blk" [then]
     blkpath place
 
-: (blkpath)  project count blkpath count strjoin ;
+: (blkpath)
+    blkpath count s" /" search nip nip if blkpath count ;then
+    project count blkpath count strjoin
+;
 : revert  (blkpath) image /image @file ;
 : save    image /image (blkpath) file!  save-assets ;
 :make bye   save  al_uninstall_system  0 ExitProcess ;
