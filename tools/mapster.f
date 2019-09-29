@@ -6,7 +6,7 @@ define-tool mapster [if]
     
     toolstruct
         cell toolfield >palette         \ pic; block #
-        /layer toolfield layer
+        /layer 4 * toolfield layers
         cell toolfield curTile
         4 cells toolfield curColor      \ pen color
         cell toolfield tileseta
@@ -15,6 +15,7 @@ define-tool mapster [if]
         cell toolfield colora
         cell toolfield palettea
         cell toolfield hilitea
+        cell toolfield curLayer
     drop
     
     volatilevars
@@ -24,6 +25,7 @@ define-tool mapster [if]
     drop
     
     : @color  curColor fore 4 cells move ;
+    : layer  curLayer @ 4 mod /layer * layers + ;
 
     0
     cell field 'draw
@@ -44,17 +46,23 @@ define-tool mapster [if]
     : outline  w 2@ sx 2@ 2*  2dup  white rect  -1 -1 +at  2 2 2+ black rect ;
 
     : scrollx  layer scroll-offset ;
-    : tilebuf  layer tilemap-block @> ;
-    : tspic  layer tileset-pic @> ;
+    : tilebuf  layer >tilemap @> ;
+    : tspic  layer >tileset @> ;
     : tsbmp  tspic handle @ ;
     : canvas  ( - x y w h )  curTile @ tspic tile-region ;
     : canvxy  canvas 2drop ;
     : canvwh  canvas 2nip ;
     : mark  tspic modified on ;
     : palbmp  >palette @> handle @ ;
-    
+    : snapped>
+        r> scrollx 2@ | y x code |
+        x y x y 16 16 2mod 2- scrollx 2!
+        code call
+        x y scrollx 2!
+    ;    
     : box  x 2@   w 2@ sx 2@ 2*   aabb 1 1 2- ;
-    : (adr)  mapa @> { maus x 2@ 2- sx 2@ 2/ scrollx 2@ 2+ 16 16 2/ tilebuf adr } ;
+    : colrow  scrollx 2@ 2+ 16 16 2/ ;
+    : (adr)  snapped> mapa @> { maus x 2@ 2- sx 2@ 2/ colrow tilebuf adr } ;
     : that   (adr) @ curTile ! ;
     : lay  curTile @ (adr) ! ;
     : mpos  maus x 2@ 2- sx 2@ 2/ ;
@@ -78,24 +86,37 @@ define-tool mapster [if]
     ( --== Commandline ==-- )
     
     : load  ( scene - )
-        tool-scene 1 copy
-        tool-scene layer0 layer /layer move
-        tool-scene layer0 /layer erase ;
+        gui 1 copy
+        gui layer0 layers /layer 4 * move
+        gui layer0 /layer 4 * erase
+        1 curLayer !
+        gui res 2@ mapa @> { w 2! }
+        displaywh gui res 2!
+    ;
+    : fillscr
+        layer viewport h@ 16 / pfloor for
+            layer viewport w@ 16 / pfloor for
+                curTile @ i j 0 0 colrow 2+ tilebuf adr !
+            loop
+        loop
+    ;
 
 
     ( --== Elements ==-- )
 
+    : (draw-layer)  snapped> 0 0 layer draw-layer ;
+
     kind: mapk
         :draw
-            layer tileset-pic @> -exit
-            tileseta @> beside  ( outline )
+            layer >tileset @> -exit
+            tileseta @> beside
             x 2@ w 2@ layer viewport 4!
-            at@ 
-            0 0 layer draw-layer
+            at@
+            (draw-layer)
             at
             outline
             0 h @ 2 + +at
-            white layer @> scrollx 2@ swap 1i (.) s[ s"  " +s 1i (.) +s ]s text
+            white layer @> scrollx 2@ swap 1i 16 / #4 (h.0) s[ s"  " +s 1i 16 / #4 (h.0) +s ]s text
         ;
         :logic
             lb interact? if  lay  ;then
@@ -104,9 +125,10 @@ define-tool mapster [if]
     drop
 
     kind: tilesetk
-        :draw  layer tileset-pic @> -exit
-            layer tileset-pic @> handle @ bmpwh w 2!
-            layer tileset-pic @> handle @ blit
+        :draw  layer >tileset @> -exit
+            layer >tileset @> handle @ bmpwh w 2!
+            outline
+            layer >tileset @> handle @ blit
         ;
         :logic
             lb interact? if  pick  ;then
@@ -153,12 +175,11 @@ define-tool mapster [if]
     : *element  gui one dup { swap kind# !  1 1 sx 2!  16 16 x 2! } ; 
     
     : add-actors
-        mapk *element dup mapa >! { 256 256 w 2! } 
+        mapk *element dup mapa >! { layer viewport wh@ w 2! } 
         tilesetk *element dup tileseta >! { }
-        tilek *element dup tilea >! { 8 8 sx 2! }
+        tilek *element dup tilea >! { 16 16 sx 2! }
         colork *element dup colora >! { }
         palettek *element dup palettea >! { }
-
     ;
         
     : clear-tile
@@ -177,7 +198,7 @@ define-tool mapster [if]
         <e> pressed if ?eraser ;then 
         <s> pressed ctrl? and if  save  ;then
         <z> pressed ctrl? and if  undo  ;then
-        <del> pressed if  clear-tile  ;then
+        <del> pressed shift? not and if  clear-tile  ;then
         <del> pressed shift? and if  fill-tile  ;then
         gui each> { kind 'logic @ execute }
     ;
@@ -188,18 +209,18 @@ define-tool mapster [if]
     ;
     
     : resume-mapster
+        tool-scene gui 1 copy
         (pump)
         show>
             black backdrop
             tspic block> 0 = if s" No tileset loaded." text ;then
-            tool-scene gui 1 copy
+            gui tool-scene 1 copy
             ['] draw-kind is draw
             gui draw-scene
             controls
     ;
     
     : start-mapster
-        ."  HI mapster!"
         add-actors
         resume-mapster
     ;
@@ -209,7 +230,6 @@ define-tool mapster [if]
 installing? [if]
     s" start-mapster" starter cplace
     s" resume-mapster" resumer cplace
-    displaywh 2 2 2/ tool-scene res 2!
     white fore 4@ curColor 4!
     ?$( pic defaultpal ) 0 = [if]
         add-pic defaultpal defaultpal.png
