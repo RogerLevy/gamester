@@ -188,11 +188,12 @@ define-tool mapster [if]
     ;
     
     : resume-mapster
-        ['] draw-kind is draw
         (pump)
         show>
             black backdrop
+            tspic block> 0 = if s" No tileset loaded." text ;then
             tool-scene gui 1 copy
+            ['] draw-kind is draw
             gui draw-scene
             controls
     ;
