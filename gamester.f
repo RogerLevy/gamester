@@ -705,6 +705,10 @@ defer resume
     tool @ if resume else quit then
 ;
 
+project count s" shared.f" strjoin file-exists [if]
+    s" depend " s[ project count +s s" shared.f" +s ]s evaluate
+[then]
+
 cr .( Gamester: Loading block file... )
 warm
 
