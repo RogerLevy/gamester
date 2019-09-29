@@ -237,7 +237,7 @@ drop #256 constant rolestruct
 : named  ( block - <name> )
     <word> rot >nfa cplace ;
 
-: (?$)  ( bank - <name> adr|0 )  \ <name> isn't consumed
+: (?$)  ( bank - <name> adr|0 )  
     >first
     1023 for
         dup >nfa ccount
@@ -245,11 +245,14 @@ drop #256 constant rolestruct
             state @ if  block> postpone literal postpone block  then
         ;then
         block+
-    loop   drop  0
+    loop   drop  0  skip
 ;
-: ($)  (?$) dup 0 = abort" Block not found!" ;  \ <name> isn't consumed
- 
-: $(  ( - <bank> <name> adr )  \ find a named block; ex: $( pic myconid )
+: ($)  (?$) dup 0 = abort" Block not found!" ;  
+
+: ?$(  ( - <bank> <name> adr|0 )
+    ' execute (?$) skip ; \ SKIP skips the ')'
+
+: $(  ( - <bank> <name> adr )
     ' execute ($) skip ; immediate
     
 : clear-bank  ( bank - )
@@ -290,7 +293,7 @@ constant /constant
 : (env)  ( kind c - <name> adr )   \ address is of the value
     locals| c k |
     env (?$) ?dup if
-        skip k c third kind ccount compare 0= if  data  ;then
+        k c third kind ccount compare 0= if  data  ;then
         true abort" Found constant is of the wrong kind."
     then
     env one dup named
