@@ -24,6 +24,7 @@ define Gamester
 0 value me
 0 value this
 0 value installing?
+0 value newBlockFile?
 defer save-assets  ( -- )  :make save-assets ;
 
 ( --== Utilities ==-- )
@@ -79,11 +80,12 @@ depth 0 = [if] s" default.blk" [then]
 : copy  blocks move ;
 : delete  0 swap c! ;
 : >!  swap block> swap ! ;
-: @>  @ block ;
+: @>  @ [defined] dev [if] dup 0 = abort" Invalid reference!" [then] block ;
 
 ( --== field stuff ==-- )
 
-: field     create over , + does> @ + ;
+: ?overflow  dup #1024 > abort" Block struct definition overflow." ;
+: field     create over , + ?overflow does> @ + ;
 : record    #16 field ;
 : reserve       #16 * + ;
 : \record    1 reserve skip ;
@@ -111,9 +113,9 @@ blockstruct
 drop #256 constant assetstruct
 
 0
-    record tilemap-config   ( block#, tileset-pic )
-    : tilemap-block   tilemap-config ;
-    : tileset-pic     tilemap-config cell+ ;
+    record tilemap-config   ( ~tilemap, ~tileset )
+    : >tilemap   tilemap-config ;
+    : >tileset     tilemap-config cell+ ;
     record parallax         ( x, y )
     record scroll-offset    ( x, y )
     record bounds           ( x, y, w, h ) 
@@ -196,7 +198,7 @@ drop #512 constant commonvars
 : \global  +  0 parse 2drop ;
 
 blockstruct
-    cell global gameSlew     \ current slew (block)
+    cell global >stage     \ current slew (block)
     cell global tool         \ current tool  (block)
     cell global nextid       \ next global ID (incremented by ONE)
     cell global lasttool     \ last tool that was RUN (block#)
@@ -359,6 +361,13 @@ constant /pic
     <word> this path cplace
     16 16 this subsize 2!
     this load-pic
+;
+
+: new-pic  ( w h - <name> <path> )
+    pic one dup named  to this
+    <word> this path cplace
+    16 16 this subsize 2!
+    *bmp this handle !
 ;
 
 : tile-region  ( n pic - x y w h )
@@ -529,16 +538,29 @@ constant /pic
         tsize dup 2mod 2negate +at
         tsize dup 2/ 2pfloor 512 * + cells baseadr + pic draw-tilemap
 ;
-: stage  gameSlew @> ;
-: init-layer  ( tilemap tileset-pic layer -- )
+: stage  >stage @> ;
+: init-layer  ( tilemap tileset layer -- )
     >r
-        r@ tileset-pic >! r@ tilemap-block >!
-        1 1 r@ parallax 2!
-        0 0 r@ scroll-offset 2!
-        0 0 viewwh r@ viewport 4!
-        0 0 8192 8192 r@ bounds 4!
+        layer-template r@ /layer move
+        r@ >tileset >! r@ >tilemap >!
     r> drop
 ;
+: init-slew  ( tilemap tileset dest-bank -- )
+    >r
+    displaywh 3 3 2/ layer-template viewport wh!
+    r@ init-scene
+    displaywh 3 3 2/ r@ res 2!
+    ( tilemap tileset ) r@ layer1 init-layer
+    r> drop
+;
+
+: load-slew  ( slew -- )
+    stage /bank move
+;
+
+\ : load-scene  ( scene -- )
+\     stage 1 copy
+\ ;
 
 ( --== Actor rendering ==-- )
 
@@ -561,7 +583,7 @@ defer draw
 
 : draw-sprite  ( - )
     >pic @ 0 = if  placeholder  white  ;then
-    x 2@  gameSlew @> scroll 2@ 2-  at  sub@ >pic @> draw-tile ;
+    x 2@  >stage @> scroll 2@ 2-  at  sub@ >pic @> draw-tile ;
 
 ' draw-sprite is draw
 
@@ -593,6 +615,8 @@ create drawlist 1023 cells /allot
 
 ( --== Additional commands ==-- )
 
+: s( ( -- <name> <> system )   \ ex: t( mapster )
+    system ($) skip ; immediate
 : t( ( -- <name> <> template )   \ ex: t( myconid )
     template ($) skip ; immediate
 : pic( ( -- <name> <> pic )     \ ex: pic( myconid )
@@ -620,12 +644,12 @@ create drawlist 1023 cells /allot
 
 : toolSource  tool @> source ;
 : load-tool  ( tool -- )
-    tool @> >r  tool >!
+    tool @ >r  tool >!
     warning on
     common
     toolSource ccount included
     warning off
-    r> tool >!
+    r> tool !
 ;
 
 ( --== Some startup stuff ==-- )
@@ -654,7 +678,7 @@ defer resume
         stage draw-scene
 ;
 
-: empty  only Forth definitions also empty ;
+: empty  save only Forth definitions also empty ;
 
 ( --== Tool stuff pt 2 ==-- )
 
@@ -675,14 +699,16 @@ defer resume
 : toolVocab  tool @> vocab ;
 
 : contextualize  only forth also Gamester also  toolVocab ccount evaluate  definitions ;
+
 :make resume ( -- )
     lasttool @ if lasttool @ tool ! then 
-    tool @ 0 = if drop ;then
+    tool @ 0 = ?exit
     contextualize  
     resumer ccount evaluate
 ;
 : run ( -- <name> )
     system ($) tool >!
+    tool @ lasttool !
     gui clear-bank
     contextualize
     starter ccount evaluate
@@ -700,13 +726,17 @@ defer resume
     save-pics
 ;
 
-
 : warm
     load-pics
     load-roles
     load-systems
-    tool @ if resume else quit then
+    lasttool @ 0<> tool @ 0<> and if resume
+    else quit tool @ lasttool ! then
 ;
+
+newBlockFile? [if]
+    playfield >stage >!
+[then]
 
 project count s" shared.f" strjoin file-exists [if]
     s" depend " s[ project count +s s" shared.f" +s ]s evaluate
