@@ -221,7 +221,7 @@ drop #256 constant rolestruct
 
 ( --== bank stuff ==-- )
 
-: >bank  ( block - bank )   image /bank mod - dup   /bank mod -  image /bank mod + ;
+: >bank  ( block - bank )    block>  dup 1024 mod -  block ;
 : bank   create   ( start: ) 1024 * ,  does> @ block ;
 : >first  ( bank - adr ) block+ ;
 : >current  ( bank - adr ) dup @ blocks + ;
