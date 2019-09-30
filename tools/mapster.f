@@ -116,7 +116,10 @@ define-tool mapster [if]
             at
             outline
             0 h @ 2 + +at
-            white layer @> scrollx 2@ swap 1i 16 / #4 (h.0) s[ s"  " +s 1i 16 / #4 (h.0) +s ]s text
+            white scrollx 2@ swap 1i 16 / #4 (h.0) s[ bl +c 1i 16 / #4 (h.0) +s ]s text
+            0 32 +at
+            white scrollx 2@  layer viewport wh@ 2/ 2pfloor
+                swap 1i #4 (h.0) s[ bl +c 1i #4 (h.0) +s ]s text
         ;
         :logic
             lb interact? if  lay  ;then
