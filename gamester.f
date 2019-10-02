@@ -67,7 +67,29 @@ depth 0 = [if] s" default.blk" [then]
 [then]
 
 
+( --== field stuff ==-- )
+
+: ?overflow  dup #1024 > abort" Block struct definition overflow." ;
+: field     create over , + ?overflow does> @ + ;
+: record    #16 field ;
+: reserve       #16 * + ;
+: \record    1 reserve skip ;
+: offset+    ' >body @ + ;
+
+
 ( --== block stuff ==-- )
+
+0
+    1 reserve      \ reserve the name field
+    cell field id
+    cell field >chain
+drop #32 constant blockstruct
+
+blockstruct
+    record moduleType   \ word
+    record vocab        \ word
+    #64 field source
+drop #128 constant modulestruct
 
 : block  #2 rshift image + ;
 : block> image - #2 lshift ;
@@ -78,29 +100,10 @@ depth 0 = [if] s" default.blk" [then]
 : claim  on ;
 : >nfa   ;
 : copy  blocks move ;
-: delete  0 swap c! ;
 : >!  swap block> swap ! ;
 : @>  @ [defined] dev [if] dup 0 = abort" Invalid reference!" [then] block ;
-
-( --== field stuff ==-- )
-
-: ?overflow  dup #1024 > abort" Block struct definition overflow." ;
-: field     create over , + ?overflow does> @ + ;
-: record    #16 field ;
-: reserve       #16 * + ;
-: \record    1 reserve skip ;
-: offset+    ' >body @ + ;
-
-0
-    1 reserve      \ reserve the name field
-    cell field id
-drop #32 constant blockstruct
-
-blockstruct
-    record moduleType   \ word
-    record vocab        \ word
-    #64 field source
-drop #128 constant modulestruct
+: delete   0 over c! >chain @ ?dup -exit block recurse ;
+: chain  ( src dest - ) begin dup >chain @ dup while nip repeat drop >chain >! ;
 
 ( --== Structures ==-- )
 
@@ -110,7 +113,8 @@ blockstruct
     record path 7 reserve
     record handle
     record modified
-drop #256 constant assetstruct
+constant /assetheader
+#256 constant assetstruct
 
 0
     record tilemap-config   ( ~tilemap, ~tileset )
@@ -262,7 +266,8 @@ drop #256 constant rolestruct
     
 : clear-bank  ( bank - )
     0 over !  \ reset cursor
-     >first 1023 blocks erase ;
+     >first 1023 blocks erase
+;
 : each>  ( bank - )  ( block - )
     r>  swap >first 1023 for
         dup enabled? if
@@ -485,8 +490,8 @@ constant /pic
     r> drop
 ;
 
-: load-slew  ( slew -- )
-    stage /bank move
+: load-slew  ( src-slew dest-slew -- )
+    /bank move
 ;
 
 \ : load-scene  ( scene -- )
@@ -625,7 +630,7 @@ include prg/gamester/cli.f
 ;
 
 newBlockFile? [if]
-    playfield >stage >!
+    playfield >stage >!    
 [then]
 
 project count s" shared.f" strjoin file-exists [if]
