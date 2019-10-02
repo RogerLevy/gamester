@@ -17,7 +17,7 @@ image /image erase
 
 displaywh 3 3 2/ resolution
 playfield init-scene
-playfield gameSlew >!
+playfield >stage >!
 
 add-pic myconid myconids.png
 add-pic overworld overworld-tiles.png

@@ -6,7 +6,6 @@
 ( --== Experimental editing tools ==-- )
 
 : num  <word> evaluate ;
-: edit  ( adr - )    to this   this #128 dump ;
 : set  this offset+ a!>
     begin /source nip while
         <word> over c@ [char] " = if
@@ -46,18 +45,35 @@
     <word> this path cplace
     16 16 this subsize 2!
     *bmp this handle !
+    this save-pic
 ;
 
 ( --== Actors, roles, templates, slews ==-- )
 
-: add-template  ( - <name> )
-    template one dup as  named  
+
+: add-sprite  ( - <pic> <name> )
+    pic ($) to this
+    stage one dup as named
+    this >pic >!
+    16 16 sbw 2!
+    16 16 ibw 2!
+    1 1 sx 2!
+    stage scroll 2@ viewwh 2 2 2/ 2+ x 2!
+;
+
+: template-from  ( old - <new> )
+    template one as 
+    ( old ) me copy 
+    me named
 ;
 
 : add-role ( - <name> <path> )
     role one dup named   to this
-    <name> this path cplace
-    this load-role
+    <word> this path cplace
+    this ['] load-role catch ?dup if
+        this delete
+        throw
+    then
     common
 ;
 
@@ -70,7 +86,7 @@
     r> drop
 ;
 
-: add-actor  ( -- <template> actor )
+: add-instance  ( -- <template> actor )
     template ($)  stage instance dup as ;
 
 : update  ( -- <role> )
@@ -80,26 +96,11 @@
 
 : import  ( -- <name> <scriptpath> )
     >in @  add-role  >in !
-    >in @  add-template  >in !
+    >in @  template one dup named as  >in !
     >in @  role ($) >role >!  >in ! 
     >in @  pic (?$) ?dup if  >pic >!  then  >in !
     skip skip
 ;
-
-( --== Additional commands ==-- )
-
-: s( ( -- <name> <> system )   \ ex: t( mapster )
-    system ($) skip ; immediate
-: t( ( -- <name> <> template )   \ ex: t( myconid )
-    template ($) skip ; immediate
-: pic( ( -- <name> <> pic )     \ ex: pic( myconid )
-    pic ($) skip ; immediate
-: scene( ( -- <name> <> scene )   \ ex: scene( default )
-    scene ($) skip ; immediate
-: sound( ( -- <name> <> sound )   \ ex: sound( bang )
-    sound ($) skip ; immediate
-: role( ( -- <name> <> role )   \ ex: role( myconid )
-    role ($) skip ; immediate
 
 
 ( --== Tools ==-- )

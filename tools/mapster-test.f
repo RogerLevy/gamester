@@ -11,7 +11,7 @@ quit
 
 displaywh 3 3 2/ resolution
 playfield init-scene
-playfield gameSlew >!
+playfield >stage >!
 
 add-pic overworld ../data/overworld-tiles.png
 add-pic myconid ../data/myconids.png
@@ -24,7 +24,7 @@ import  camera ../roles/camera.f
 pic( willy ) to this
     set-animation 1   0 1 2 1
 
-
+( --== Create a tilemap ==-- )
 16 bank mytilemap
 
 : garbage  a!> 512 for 512 for 8 rnd pfloor !+ loop loop ;
@@ -33,18 +33,23 @@ mytilemap garbage
 
 mytilemap pic( overworld ) stage layer0 init-layer
 
+( --== Create a game world to test out the map ==-- )
+
 100 100 at
-add-actor myconid  named myboy  start
+add-instance myconid  named myboy  start
+
 0 0 at
-add-actor camera   named camera  stop \  start
+add-instance camera   named camera  stop
 me camera >!
+
 150 150 at
-add-actor willy  named willy  start
+add-instance willy  named willy  start
 
 install prg/gamester/tools/mapster.f mapster
-install prg/gamester/tools/mapster.f mapster2
 
 run mapster
 mytilemap pic( overworld ) layer init-layer
+
+displaywh 2 2 2/ gui res 2!
 
 cr .( Finished loading test code.) 

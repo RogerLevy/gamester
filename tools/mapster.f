@@ -1,5 +1,5 @@
 
-define-tool mapster [if]
+define-tool Mapster [if]
     
     depend prg/gamester/apptools.f
     
@@ -28,8 +28,8 @@ define-tool mapster [if]
     : layer  curLayer @ 4 mod /layer * layers + ;
 
     0
-    cell field 'draw
-    cell field 'logic
+        cell field 'draw
+        cell field 'logic
     constant /kind
 
     16 stack: kinds  16 cells /allot
@@ -86,7 +86,7 @@ define-tool mapster [if]
     ( --== Commandline ==-- )
     
     : load  ( scene - )
-        gui 1 copy
+        gui copy
         gui layer0 layers /layer 4 * move
         gui layer0 /layer 4 * erase
         1 curLayer !
@@ -178,7 +178,7 @@ define-tool mapster [if]
     : *element  gui one dup { swap kind# !  1 1 sx 2!  16 16 x 2! } ; 
     
     : add-actors
-        mapk *element dup mapa >! { layer viewport wh@ w 2! } 
+        mapk *element dup mapa >! { 256 256 w 2! } 
         tilesetk *element dup tileseta >! { }
         tilek *element dup tilea >! { 16 16 sx 2! }
         colork *element dup colora >! { }
@@ -212,12 +212,12 @@ define-tool mapster [if]
     ;
     
     : resume-mapster
-        tool-scene gui 1 copy
+        tool-scene gui copy
         (pump)
         show>
             black backdrop
             tspic block> 0 = if s" No tileset loaded." text ;then
-            gui tool-scene 1 copy
+            gui tool-scene copy
             ['] draw-kind is draw
             gui draw-scene
             controls

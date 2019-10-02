@@ -3,7 +3,7 @@
 \ TODO:
 \ [x] Bank's cursors should be stored in the image not in the dictionary.
 \ [ ] SET needs to work with block ref vars
-\ [ ] :ACTION and :STATE should only set XT if no errors during compilation 
+\ [ ] ACTION: and STATE: should only set XT if no errors during compilation 
 
 
 [defined] save [if] save [then]
@@ -15,9 +15,13 @@ depend ramen/lib/a.f
 depend ramen/lib/std/kb.f
 depend venery/venery.f
 
+only forth definitions
 define Gamester
 
+only forth definitions
 : common  only forth also Gamester definitions ;
+
+common
 
 ( --== Variables ==-- )
 
@@ -57,7 +61,6 @@ depth 0 = [if] s" default.blk" [then]
 ;
 : revert  (blkpath) image /image @file ;
 : save    image /image (blkpath) file!  save-assets ;
-:make bye   save  al_uninstall_system  0 ExitProcess ;
 
 (blkpath) file-exists not [if]
     (blkpath) r/w create-file drop close-file drop
@@ -72,7 +75,7 @@ depth 0 = [if] s" default.blk" [then]
 : ?overflow  dup #1024 > abort" Block struct definition overflow." ;
 : field     create over , + ?overflow does> @ + ;
 : record    #16 field ;
-: reserve       #16 * + ;
+: reserve   #16 * + ;
 : \record    1 reserve skip ;
 : offset+    ' >body @ + ;
 
@@ -99,11 +102,11 @@ drop #128 constant modulestruct
 : enabled?  c@ 0 <> ; 
 : claim  on ;
 : >nfa   ;
-: copy  blocks move ;
 : >!  swap block> swap ! ;
 : @>  @ [defined] dev [if] dup 0 = abort" Invalid reference!" [then] block ;
 : delete   0 over c! >chain @ ?dup -exit block recurse ;
 : chain  ( src dest - ) begin dup >chain @ dup while nip repeat drop >chain >! ;
+: copy  dup >r 1 blocks move $ff r> ! ;  
 
 ( --== Structures ==-- )
 
@@ -208,6 +211,8 @@ blockstruct
     cell global lasttool     \ last tool that was RUN (block#)
     cell global actionOffset
     cell global stateOffset
+    cell global (me)
+    cell global (this)
 drop
 #128 constant globals
 
@@ -288,7 +293,7 @@ drop #256 constant rolestruct
 6 bank gui       \ slew for the current tool to use (cleared by RUN)
 7 bank env       \ offset constants for actions & states, and other miscellanea
 8 bank playfield \ slew; default for game actors 
-
+9 bank table     \ for general data table use
 
 ( --== Constant storage ==-- )
 
@@ -311,6 +316,9 @@ constant /constant
 
 assetstruct
     record subsize
+    record >coldata   \ user-defined byte-tables (4 of them)
+    record >atrdata   \ user-defined byte-tables (4 of them)
+drop #384
     0 field animations
 constant /pic
 
@@ -318,16 +326,18 @@ constant /pic
 
 : load-pic  ( pic - )
     >r
+        cr r@ path ccount type
         r@ path ccount ?datapath echo loadbmp r@ handle !
     r> drop
 ;
 
 : save-pic  ( pic - )
+    dup handle @ 0 = if drop ;then
     >r
+        cr r@ path ccount type
         r@ handle @  r@ path ccount ?datapath savebmp
     r> drop
 ;
-
 
 : tile-region  ( n pic - x y w h )
     >r 16 /mod #4 lshift swap #4 lshift swap r> subsize 2@ ;
@@ -367,8 +377,7 @@ constant /pic
 
 : instance  ( template slew -- actor )
     one {
-        me 1 copy
-        $ff me !   \ invalidates the name
+        me copy 
         at@ x 2!
     me }
 ;
@@ -386,7 +395,6 @@ constant /pic
 ( --== Role stuff ==-- )
 
 : runvec  ( ... ofs - ... )   >role @> vtable @ + @ execute ;
-: act  woke @ -exit  state# @ runvec ;
 : already  >in @ >r defined r> >in ! if >body cell+ @ $01234567 = ;then  drop false ;
 : (create)
     get-order get-current
@@ -400,7 +408,7 @@ constant /pic
     >in @ >r 
     s" action" (env) dup @ 0 = if
         cell actionOffset +! 
-        actionOffset @ swap !  
+        actionOffset @ swap ( env ) !  
         r> >in !  (create) actionOffset @ , $01234567 ,
     else
         r> >in !  (create) @ , $01234567 , 
@@ -412,7 +420,7 @@ constant /pic
     >in @ >r 
     s" state" (env) dup @ 0 = if
         cell stateOffset +! 
-        stateOffset @ swap !  
+        stateOffset @ swap ( env ) !  
         r> >in !  (create) stateOffset @ 256 cells + , $01234567 ,
     else
         r> >in !  (create) @ 256 cells + , $01234567 , 
@@ -435,12 +443,12 @@ constant /pic
         r@ path ccount ?rolePath included
     r> drop
 ;
-: add-vtable ( role - )
+: //vtable ( role - )
     here swap vtable ! 512 cells /allot
 ;
 : define-role  ( - <role> <name> )  \ defines a vocab and assigns it to the current role
     role ($) >r
-    r@ vtable @ 0 = if  r@ add-vtable  then
+    r@ vtable @ 0 = if  r@ //vtable  then
     <name> r@ vocab cplace
     define
     r> drop
@@ -495,7 +503,7 @@ constant /pic
 ;
 
 \ : load-scene  ( scene -- )
-\     stage 1 copy
+\     stage clone
 \ ;
 
 ( --== Actor rendering ==-- )
@@ -528,13 +536,20 @@ defer draw
 
 
 
-( --== Z-sorted rendering ==-- )
+( --== Rendering ==-- )
 
 create drawlist 1023 cells /allot
 : gathered  drawlist dup a!> 0 rot each> !+ 1 + ;
 : zorder@  { zorder @ } ;
+
+?action physics  ( -- ) 
+: act  >role @ -exit  woke @ -exit  state# @ runvec  dead @ ?exit  physics ;
+
 : draws  ( slew - )
     gathered 2dup ['] zorder@ rsort swap a!> for @+ { draw act } loop ;
+
+: sweep  ( slew - )
+    each> { dead } @ if me delete then ; 
 
 : draw-scene ( scene - )
     me { >r
@@ -561,7 +576,7 @@ create drawlist 1023 cells /allot
     r> tool !
 ;
 
-( --== Some startup stuff ==-- )
+( --== Runtime/startup ==-- )
 
 defer resume
 
@@ -589,6 +604,20 @@ defer resume
 
 : empty  save only Forth definitions also empty ;
 
+:make save-assets
+    save-pics
+;
+
+: cold
+    (me) @ block as
+    (this) @ block to this
+    load-pics
+    load-roles
+    load-systems
+    lasttool @ 0<> tool @ 0<> and if resume
+    else quit tool @ lasttool ! then
+;
+
 ( --== Tool stuff pt 2 ==-- )
 
 : tool-scene  >toolScene @> ;  
@@ -611,33 +640,50 @@ defer resume
     define
 ;
 
-( ~~~~~~~~~~~~~~~~~~~~~~~~~ )
+
+( --== Lookup shorthands ==-- )
+
+: s( ( -- <name> <> system )   \ ex: s( mapster )
+    system ($) skip ; immediate
+: t( ( -- <name> <> template )   \ ex: t( myconid )
+    template ($) skip ; immediate
+: pic( ( -- <name> <> pic )     \ ex: pic( myconid )
+    pic ($) skip ; immediate
+: scene( ( -- <name> <> scene )   \ ex: scene( default )
+    scene ($) skip ; immediate
+: sound( ( -- <name> <> sound )   \ ex: sound( bang )
+    sound ($) skip ; immediate
+: role( ( -- <name> <> role )   \ ex: role( myconid )
+    role ($) skip ; immediate
+: a( ( -- <name> <> actor )     \ ex: a( myconid )   (searches on the STAGE)
+    stage ($) skip ; immediate
+
+( ~~~~~~~~~~~~~~~~~~~~~~~~ )
+(        Includes          )
+( ~~~~~~~~~~~~~~~~~~~~~~~~ )
 
 include prg/gamester/cli.f
 
-( ~~~~~~~~~~~~~~~~~~~~~~~~~ )
+( ~~~~~~~~~~~~~~~~~~~~~~~~ )
 
-:make save-assets
-    save-pics
-;
 
-: warm
-    load-pics
-    load-roles
-    load-systems
-    lasttool @ 0<> tool @ 0<> and if resume
-    else quit tool @ lasttool ! then
-;
+( --== Finish Startup ==-- )
 
 newBlockFile? [if]
     playfield >stage >!    
 [then]
 
+( Load shared.f of project )
 project count s" shared.f" strjoin file-exists [if]
     s" depend " s[ project count +s s" shared.f" +s ]s evaluate
 [then]
 
 cr .( Gamester: Loading block file... )
-warm
+
+: presave  me (me) >!  this (this) >! ;
+
+:make bye   presave  save  al_uninstall_system  0 ExitProcess ;
+
+cold
 
 cr .( Gamester: Done!  )
