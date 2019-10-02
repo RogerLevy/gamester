@@ -468,10 +468,10 @@ constant /pic
 ;
 : filter-slew  ( src-scene slew - )  \ removes excluded actors 
     | b s |
-    b each>
+    b each> {
     scenebits @ s scenemask @ and 0 = if
         me delete
-    then
+    then }
 ;
 : limit-scroll  ( scrollx scrolly layer - scrollx scrolly )
     >r
