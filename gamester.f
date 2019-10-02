@@ -65,6 +65,7 @@ depth 0 = [if] s" default.blk" [then]
 (blkpath) file-exists not [if]
     (blkpath) r/w create-file drop close-file drop
     save
+    true to newBlockFile?
 [else]
     revert
 [then]
