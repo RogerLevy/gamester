@@ -494,7 +494,7 @@ constant /pic
         tsize dup 2/ 2pfloor 512 * + cells baseadr + pic draw-tilemap
 ;
 : stage  ( -- slew ) >stage @> ;
-: muster ( slew -- ) >stage >! ;
+: switch ( slew -- ) >stage >! ;
 : init-layer  ( tilemap tileset layer -- )
     >r
         layer-template r@ /layer move
