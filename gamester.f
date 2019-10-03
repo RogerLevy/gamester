@@ -679,7 +679,8 @@ include prg/gamester/lib/cli.f
 ( --== Finish Startup ==-- )
 
 newBlockFile? [if]
-    playfield >stage >!    
+    playfield >stage >!
+    add-pic default prg/gamester/data/default.png  this lock on
 [then]
 
 ( Load shared.f of project )
