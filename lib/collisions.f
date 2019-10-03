@@ -23,7 +23,7 @@ define collisioning
     : tileprops@   ( tilespec -- flags )
         1i $ffff and tileprops + c@ ;
 
-    : map@  ( col row - tile )  map adr ;
+    : map@  ( col row - tile )  map adr @ ;
 
     : cel? BIT_CEL and ; \ ' ceiling '
     : flr? BIT_FLR and ; \ ' floor '
@@ -46,20 +46,20 @@ define collisioning
     : ve+  swap gap +  sbw @ #1 - px +  min  swap ;
     : he+  gap +  sbh @ #1 - ny @ +  min ;
 
-    : +vy ny +! ny @ py - vy ! ;
-    : +vx nx +! nx @ px - vx ! ;
+    : +ny ny +! 0 vy ! ;
+    : +nx nx +! 0 vx ! ;
 
     ( push up/down )
-    : pu ( xy ) nip gap mod negate +vy  true to floor?  on-collide-tilemap  ;
-    : pd ( xy ) nip gap mod negate gap + +vy  true to ceiling?  on-collide-tilemap ;
+    : pu ( xy ) nip gap mod negate +ny  true to floor?  on-collide-tilemap  ;
+    : pd ( xy ) nip gap mod negate gap + +ny  true to ceiling?  on-collide-tilemap ;
 
     ( check up/down )
     : cu sbw @ gap / 2 + for 2dup pt cel? if pd unloop exit then ve+ loop 2drop ;
     : cd sbw @ gap / 2 + for 2dup pt flr? if pu unloop exit then ve+ loop 2drop ;
 
     ( push left/right )
-    : pl ( xy ) drop gap mod negate +vx  true to rwall?  on-collide-tilemap ;
-    : pr ( xy ) drop gap mod negate gap + +vx  true to lwall?  on-collide-tilemap ;
+    : pl ( xy ) drop gap mod negate +nx  true to rwall?  on-collide-tilemap ;
+    : pr ( xy ) drop gap mod negate gap + +nx  true to lwall?  on-collide-tilemap ;
 
     ( check left/right )
     : cl sbh @ gap /  2 + for 2dup pt wrt? if pr unloop exit then he+ loop 2drop ;
@@ -73,7 +73,8 @@ define collisioning
 common also collisioning
 
 : collide-tilemap> ( tilemap tileprops -- <code> )  ( -- )
-    to tileprops to map  r> code> is on-collide-tilemap  init ud lr ;
+    to tileprops to map  r> code> is on-collide-tilemap  init ud lr
+    nx 2@ x 2! ;
 
 : collide-tilemap  ( tilemap tileprops -- )
     collide-tilemap> noop ;

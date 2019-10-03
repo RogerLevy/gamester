@@ -178,7 +178,7 @@ define-tool Mapster [if]
     : *element  gui one dup { swap kind# !  1 1 sx 2!  16 16 x 2! } ; 
     
     : add-actors
-        mapk *element dup mapa >! { 256 256 w 2! } 
+        mapk *element dup mapa >! { w @ 0 = if 256 256 w 2! then } 
         tilesetk *element dup tileseta >! { }
         tilek *element dup tilea >! { 16 16 sx 2! }
         colork *element dup colora >! { }

@@ -471,7 +471,7 @@ constant /pic
     role ($) >r
     r@ here swap vtable ! 512 cells /allot
     <name> r@ vocab cplace
-    define
+    common define
     r> drop
 ;
 
