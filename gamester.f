@@ -510,7 +510,7 @@ constant /pic
 \     stage clone
 \ ;
 
-( --== Actor rendering ==-- )
+( --== Actor stuff ==-- )
 
 : sub@
     anim# @ >pic @> animation >r
@@ -539,8 +539,7 @@ defer draw
     rate ! 0 animctr ! anim# ! ;
 
 
-
-( --== Rendering ==-- )
+( --== Rendering/logic ==-- )
 
 create drawlist 1023 cells /allot
 : gathered  drawlist dup a!> 0 rot each> !+ 1 + ;
@@ -567,6 +566,7 @@ create drawlist 1023 cells /allot
     r> drop }
 ;
 
+: acts  each> { act } ;
 
 ( --== Tools stuff pt 1 ==-- )
 
@@ -587,13 +587,10 @@ defer resume
 : load-pics    pic each> load-pic ;
 : load-roles   role each> load-role ;
 : load-systems system each>  false to installing? load-tool ;
-
 : save-pics    pic each> dup modified @ if dup modified off save-pic else drop then ;
-
+: free-pics  pic each> handle @ -bmp ;
 
 : asdf  quit ;
-
-: acts  each> { act } ;
 
 : quit
     common
@@ -609,7 +606,7 @@ defer resume
         stage acts
 ;
 
-: empty  save only Forth definitions also empty ;
+: empty  save free-pics only Forth definitions also empty ;
 
 :make save-assets
     save-pics
@@ -650,7 +647,7 @@ defer resume
 
 ( --== Lookup shorthands ==-- )
 
-: s( ( -- <name> <> system )   \ ex: s( mapster )
+: m( ( -- <name> <> system )   \ ex: m( mapster )
     system ($) skip ; immediate
 : t( ( -- <name> <> template )   \ ex: t( myconid )
     template ($) skip ; immediate
