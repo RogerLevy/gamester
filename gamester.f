@@ -551,7 +551,7 @@ create drawlist 1023 cells /allot
 : act  >role @ -exit  woke @ -exit  state# @ runvec  dead @ ?exit  physics ;
 
 : draws  ( slew - )
-    gathered 2dup ['] zorder@ rsort swap a!> for @+ { draw act } loop ;
+    gathered 2dup ['] zorder@ rsort swap a!> for @+ { draw } loop ;
 
 : sweep  ( slew - )
     each> { dead } @ if me delete then ; 
@@ -594,6 +594,8 @@ defer resume
 
 : asdf  quit ;
 
+: acts  each> { act } ;
+
 : quit
     common
     0 to 'step  0 to 'pump
@@ -605,6 +607,7 @@ defer resume
         <s> pressed ctrl? and if save then 
         black backdrop        
         stage draw-scene
+        stage acts
 ;
 
 : empty  save only Forth definitions also empty ;
