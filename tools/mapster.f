@@ -235,7 +235,7 @@ installing? [if]
     s" resume-mapster" resumer cplace
     white fore 4@ curColor 4!
     ?$( pic defaultpal ) 0 = [if]
-        add-pic defaultpal defaultpal.png
+        add-pic defaultpal prg/gamester/tools/data/defaultpal.png
         pic( defaultpal ) >palette >!
     [then]
 [then]

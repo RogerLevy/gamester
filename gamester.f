@@ -5,6 +5,7 @@
 \ [ ] SET needs to work with block ref vars
 \ [ ] ACTION: and STATE: should only set XT if no errors during compilation 
 
+include ramen/ramen.f
 
 [defined] save [if] save [then]
 
@@ -223,6 +224,9 @@ blockstruct
 drop
 #128 constant globals
 
+: stage  ( -- slew ) >stage @> ;
+: switchto   ( slew -- ) >stage >! ;
+
 : toolfield  ( size -- <name> )
     field does> @ tool @> + ;
 
@@ -260,8 +264,11 @@ modulestruct constant rolestruct
     first@
     1023 for
         dup >nfa ccount
-        <name> compare 0 = if skip unloop
-            state @ if  block> postpone literal postpone block  then
+        <name> compare 0 = if
+            skip unloop
+            state @ if
+                block> postpone literal postpone block
+            then
         ;then
         block+
     loop   drop  0  skip
@@ -299,6 +306,23 @@ modulestruct constant rolestruct
 7 bank env       \ offset constants for actions & states, and other miscellanea
 8 bank playfield \ slew; default for game actors 
 9 bank table     \ for general data table use
+
+( --== Lookup shorthands ==-- )
+
+: m( ( -- <name> <> system )   \ ex: m( mapster )
+    system ($) skip ; immediate
+: t( ( -- <name> <> template )   \ ex: t( myconid )
+    template ($) skip ; immediate
+: pic( ( -- <name> <> pic )     \ ex: pic( myconid )
+    pic ($) skip ; immediate
+: scene( ( -- <name> <> scene )   \ ex: scene( default )
+    scene ($) skip ; immediate
+: sound( ( -- <name> <> sound )   \ ex: sound( bang )
+    sound ($) skip ; immediate
+: role( ( -- <name> <> role )   \ ex: role( myconid )
+    role ($) skip ; immediate
+: a( ( -- <name> <> actor )     \ ex: a( myconid )   (searches on the STAGE)
+    stage ($) skip ; immediate
 
 ( --== Constant storage ==-- )
 
@@ -469,7 +493,7 @@ constant /pic
 ;
 : define-role  ( - <role> <name> )  \ defines a vocab and assigns it to the current role
     role ($) >r
-    r@ here swap vtable ! 512 cells /allot
+    512 cells allotment r@ vtable !
     <name> r@ vocab cplace
     common define
     r> drop
@@ -511,8 +535,6 @@ constant /pic
         tsize dup 2mod 2negate +at
         tsize dup 2/ 2pfloor 512 * + cells baseadr + pic draw-tilemap
 ;
-: stage  ( -- slew ) >stage @> ;
-: switch ( slew -- ) >stage >! ;
 : init-layer  ( tilemap tileset layer -- )
     >r
         layer-template r@ /layer move
@@ -542,8 +564,10 @@ constant /pic
 
 create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cyan , ' pink , 
 
+: ?color 8 mod colors vexec  ;
+
 : placeholder  ( - )
-    x 2@ sbx 2@ 2+ at  me id @ 8 mod colors vexec  sbw 2@ rectf ;
+    x 2@ sbx 2@ 2+ at  me id @ ?color  sbw 2@ rectf ;
 
 defer draw
 
@@ -565,13 +589,13 @@ create drawlist 1023 cells /allot
 : zorder@  { zorder @ } ;
 
 ?action physics  ( -- ) 
-: act  >role @ -exit  woke @ -exit  state# @ runvec  dead @ ?exit  physics ;
+: act   >role @ -exit  woke @ -exit  state# @ runvec  dead @ ?exit  physics ;
 
 : draws  ( slew - )
     gathered 2dup ['] zorder@ rsort swap a!> for @+ { draw } loop ;
 
 : sweep  ( slew - )
-    each> { dead } @ if me delete then ; 
+    each> { dead @ if me delete then } ; 
 
 : draw-scene ( scene - )
     me { >r
@@ -626,6 +650,8 @@ defer resume
         black backdrop        
         stage draw-scene
         stage acts
+        \ 0 0 at role( test ) vtable @ #8 (h.0) text
+        \ 0 0 at asdfasdf #8 (h.0) text
 ;
 
 : empty  save free-pics only Forth definitions also empty ;
@@ -634,7 +660,7 @@ defer resume
     save-pics
 ;
 
-: cold
+: initialize
     (me) @ block as
     (this) @ block to this
     load-pics
@@ -643,6 +669,7 @@ defer resume
     lasttool @ 0<> tool @ 0<> and if resume
     else quit tool @ lasttool ! then
 ;
+
 
 ( --== Tool stuff pt 2 ==-- )
 
@@ -667,23 +694,6 @@ defer resume
 ;
 
 
-( --== Lookup shorthands ==-- )
-
-: m( ( -- <name> <> system )   \ ex: m( mapster )
-    system ($) skip ; immediate
-: t( ( -- <name> <> template )   \ ex: t( myconid )
-    template ($) skip ; immediate
-: pic( ( -- <name> <> pic )     \ ex: pic( myconid )
-    pic ($) skip ; immediate
-: scene( ( -- <name> <> scene )   \ ex: scene( default )
-    scene ($) skip ; immediate
-: sound( ( -- <name> <> sound )   \ ex: sound( bang )
-    sound ($) skip ; immediate
-: role( ( -- <name> <> role )   \ ex: role( myconid )
-    role ($) skip ; immediate
-: a( ( -- <name> <> actor )     \ ex: a( myconid )   (searches on the STAGE)
-    stage ($) skip ; immediate
-
 ( ~~~~~~~~~~~~~~~~~~~~~~~~ )
 (        Includes          )
 ( ~~~~~~~~~~~~~~~~~~~~~~~~ )
@@ -704,7 +714,10 @@ newBlockFile? [if]
 [then]
 
 ( Load shared.f of project )
+cr .( PROJECT :::::::::::: ) project count type
+
 project count s" shared.f" strjoin file-exists [if]
+    common
     s" depend " s[ project count +s s" shared.f" +s ]s evaluate
 [then]
 
@@ -714,6 +727,6 @@ cr .( Gamester: Loading block file... )
 
 :make bye   presave  save  al_uninstall_system  0 ExitProcess ;
 
-cold
+initialize
 
 cr .( Gamester: Done!  )
