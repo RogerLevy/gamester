@@ -88,6 +88,7 @@ depth 0 = [if] s" default.blk" [then]
     cell field id
     cell field >chain
     cell field cursor  \ 1-1023
+    cell field lock
 drop #32 constant blockstruct
 
 blockstruct
@@ -101,14 +102,15 @@ drop #128 constant modulestruct
 : blocks  #2 rshift ;
 : block+  #1024 + ;
 : free?  c@ 0 = ;
-: enabled?  c@ 0 <> ; 
+: enabled?  c@ 0 <> ;
+: locked?  lock @ ;
 : claim  on ;
 : >nfa   ;
 : >!  swap block> swap ! ;
 : @>  @ [defined] dev [if] dup 0 = abort" Invalid reference!" [then] block ;
-: delete   0 over c! >chain @ ?dup -exit block recurse ;
+: delete   dup locked? if drop ;then begin dup off >chain @ ?dup while block repeat ;
 : chain  ( src dest - ) begin dup >chain @ dup while nip repeat drop >chain >! ;
-: copy  dup >r 1 blocks move $ff r> ! ;  
+: copy  dup >r 1 blocks move r> on ;
 
 ( --== Structures ==-- )
 
