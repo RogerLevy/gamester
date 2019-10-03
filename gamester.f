@@ -87,6 +87,7 @@ depth 0 = [if] s" default.blk" [then]
     1 reserve      \ reserve the name field
     cell field id
     cell field >chain
+    cell field cursor  \ 1-1023
 drop #32 constant blockstruct
 
 blockstruct
@@ -235,16 +236,16 @@ drop #256 constant rolestruct
 
 : >bank  ( block - bank )    block>  dup 1024 mod -  block ;
 : bank   create   ( start: ) 1024 * ,  does> @ block ;
-: >first  ( bank - adr ) block+ ;
-: >current  ( bank - adr ) dup @ blocks + ;
+: first@  ( bank - adr ) block+ ;
+: current@  ( bank - adr ) dup cursor @ blocks + ;
 : not0  dup ?exit 1 + ;
-: +cursor  ( bank - bank )  dup @ 1 + 1023 and not0 over ! ;
+: +cursor  ( bank - bank )  dup cursor @ 1 + 1023 and not0 over cursor ! ;
 : one  ( bank - adr )
     +cursor
     1023 for
-        dup >current free? if
+        dup current@ free? if
             1 nextid +!
-            >current dup 1 blocks erase  dup claim  nextid @ over id !
+            current@ dup 1 blocks erase  dup claim  nextid @ over id !
         unloop ;then
     +cursor
     loop true abort" No more left!"
@@ -253,7 +254,7 @@ drop #256 constant rolestruct
     <word> rot >nfa cplace ;
 
 : (?$)  ( bank - <name> adr|0 )  
-    >first
+    first@
     1023 for
         dup >nfa ccount
         <name> compare 0 = if skip unloop
@@ -271,11 +272,11 @@ drop #256 constant rolestruct
     ' execute ($) skip ; immediate
     
 : clear-bank  ( bank - )
-    0 over !  \ reset cursor
-     >first 1023 blocks erase
+    0 over cursor !  \ reset cursor
+     first@ 1023 blocks erase
 ;
 : each>  ( bank - )  ( block - )
-    r>  swap >first 1023 for
+    r>  swap first@ 1023 for
         dup enabled? if
             2dup 2>r swap call 2r>
         then
@@ -478,7 +479,7 @@ constant /pic
     >r
     r@ bounds xy@ 2max
     r@ bounds wh@ viewwh 2- 2min
-    r> drop
+    r> drop 
 ;
 : draw-layer ( scrollx scrolly layer - )
     dup tilemap-config 2@ swap block swap block dup subsize @
@@ -491,7 +492,8 @@ constant /pic
         tsize dup 2mod 2negate +at
         tsize dup 2/ 2pfloor 512 * + cells baseadr + pic draw-tilemap
 ;
-: stage  >stage @> ;
+: stage  ( -- slew ) >stage @> ;
+: muster ( slew -- ) >stage >! ;
 : init-layer  ( tilemap tileset layer -- )
     >r
         layer-template r@ /layer move
@@ -663,7 +665,8 @@ defer resume
 (        Includes          )
 ( ~~~~~~~~~~~~~~~~~~~~~~~~ )
 
-include prg/gamester/cli.f
+include prg/gamester/lib/cli.f
+
 
 ( ~~~~~~~~~~~~~~~~~~~~~~~~ )
 
