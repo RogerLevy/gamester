@@ -3,7 +3,7 @@ empty
 : blockfile  s" mapster-dev.blk" ;
 : prj-blockfile  project count blockfile strjoin ;
 prj-blockfile  file-exists [if]
-    prj-blockfile  16 megs 0file
+    prj-blockfile -file
 [then]
 blockfile ld prg/gamester/gamester
 
@@ -13,13 +13,12 @@ displaywh 3 3 2/ resolution
 playfield init-scene
 playfield >stage >!
 
-add-pic overworld ../data/overworld-tiles.png
-add-pic myconid ../data/myconids.png
-add-pic willy ../data/willyworm.png
-
-import  myconid ../roles/myconid.f
-import  willy ../roles/willy.f
-import  camera ../roles/camera.f
+add-pic overworld prg/gamester/data/overworld-tiles.png
+add-pic myconid   prg/gamester/data/myconids.png
+add-pic willy     prg/gamester/data/willyworm.png
+import  myconid   prg/gamester/roles/myconid.f
+import  willy     prg/gamester/roles/willy.f
+import  camera    prg/gamester/roles/camera.f
 
 pic( willy ) to this
     set-animation 1   0 1 2 1

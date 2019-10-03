@@ -44,8 +44,8 @@ defer save-assets  ( -- )  :make save-assets ;
 \ TBD: PROJECT needs to be cleared in exported games.
 : >dataPath     project count s" data/" strjoin 2swap strjoin ;
 : >rolePath     project count s" roles/" strjoin 2swap strjoin ;
-: ?datapath   2dup s" /" search nip nip if project count 2swap strjoin ;then  >dataPath ;
-: ?rolePath   2dup s" /" search nip nip if project count 2swap strjoin ;then  >rolePath ;
+: ?datapath   2dup s" /" search nip nip ?exit  >dataPath ;
+: ?rolePath   2dup s" /" search nip nip ?exit  >rolePath ;
 
 ( --== block image ==-- )
 
