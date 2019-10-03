@@ -87,8 +87,8 @@ define-tool Mapster [if]
     
     : load  ( scene - )
         gui copy
-        gui layer0 layers /layer 4 * move
-        gui layer0 /layer 4 * erase
+        gui layer1 layers /layer 4 * move
+        gui layer1 /layer 4 * erase
         1 curLayer !
         gui res 2@ mapa @> { w 2! }
         displaywh gui res 2!

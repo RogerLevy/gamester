@@ -82,7 +82,7 @@
     displaywh 3 3 2/ layer-template viewport wh!
     r@ init-scene
     displaywh 3 3 2/ r@ res 2!
-    ( tilemap tileset ) r@ layer1 init-layer
+    ( tilemap tileset ) r@ layer2 init-layer
     r> drop
 ;
 

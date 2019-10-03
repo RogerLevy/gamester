@@ -142,10 +142,10 @@ blockstruct
     record res
 constant /sceneheader
 #512
-    /layer field layer0 
-    /layer field layer1
+    /layer field layer1 
     /layer field layer2
     /layer field layer3
+    /layer field layer4
 constant /scene
 
 create layer-template  /layer /allot
@@ -462,10 +462,10 @@ constant /pic
 
 : init-scene ( scene - ) 
     >r
-    layer-template r@ layer0 /layer move
     layer-template r@ layer1 /layer move
     layer-template r@ layer2 /layer move
     layer-template r@ layer3 /layer move
+    layer-template r@ layer4 /layer move
     viewwh r@ res 2!
     r> drop 
 ;
@@ -559,11 +559,11 @@ create drawlist 1023 cells /allot
     me { >r
     r@ res 2@ or 0 = if viewwh r@ res 2! then
     r@ res 2@ resolution
-    r@ scroll 2@ r@ layer0 draw-layer 
     r@ scroll 2@ r@ layer1 draw-layer 
-    r@ draws
     r@ scroll 2@ r@ layer2 draw-layer 
+    r@ draws
     r@ scroll 2@ r@ layer3 draw-layer 
+    r@ scroll 2@ r@ layer4 draw-layer 
     r> drop }
 ;
 

@@ -30,7 +30,7 @@ pic( willy ) to this
 
 mytilemap garbage
 
-mytilemap pic( overworld ) stage layer0 init-layer
+mytilemap pic( overworld ) stage layer1 init-layer
 
 ( --== Create a game world to test out the map ==-- )
 
