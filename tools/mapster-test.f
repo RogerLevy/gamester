@@ -44,8 +44,6 @@ me camera >!
 150 150 at
 add-instance willy  named willy  start
 
-install prg/gamester/tools/mapster.f mapster
-
 run mapster
 mytilemap pic( overworld ) layer init-layer
 

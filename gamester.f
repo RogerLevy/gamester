@@ -677,6 +677,7 @@ include prg/gamester/lib/cli.f
 newBlockFile? [if]
     playfield >stage >!
     add-pic default prg/gamester/data/default.png  this lock on
+    install prg/gamester/tools/mapster.f mapster
 [then]
 
 ( Load shared.f of project )
