@@ -1,6 +1,6 @@
 
 : list  ( bank - )
-    each> cr dup @ #-1 = if h. else >nfa ccount type then ;
+    each> cr block. ;
 
 
 ( --== Experimental editing tools ==-- )

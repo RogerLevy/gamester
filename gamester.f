@@ -33,6 +33,7 @@ defer save-assets  ( -- )  :make save-assets ;
 
 ( --== Utilities ==-- )
 
+: [dev]  s" [defined] dev" evaluate ; immediate
 : |  postpone locals| ; immediate
 : <word>   bl word ccount ;
 : <name>  >in @ <word> rot >in ! ;
@@ -108,10 +109,11 @@ drop #128 constant modulestruct
 : claim  on ;
 : >nfa   ;
 : >!  swap block> swap ! ;
-: @>  @ [defined] dev [if] dup 0 = abort" Invalid reference!" [then] block ;
+: @>  @ [dev] [if] dup 0 = abort" Invalid reference!" [then] block ;
 : delete   dup locked? if drop ;then begin dup off >chain @ ?dup while block repeat ;
 : chain  ( src dest - ) begin dup >chain @ dup while nip repeat drop >chain >! ;
 : copy  dup >r 1 blocks move r> on ;
+: block.  dup @ #-1 = if h. else >nfa ccount type space then ;
 
 ( --== Structures ==-- )
 
@@ -306,7 +308,7 @@ blockstruct
 constant /constant
 
 : (env)  ( kind c - <name> adr )   \ address is of the value
-    >in @ locals| (in) c k |
+    >in @ | (in) c k |
     env (?$) ?dup if
         k c third kind ccount compare 0= if  data  ;then
         true abort" Found constant is of the wrong kind."
@@ -316,6 +318,20 @@ constant /constant
         k c third kind cplace
         data
     then
+;
+
+
+: (n)  ( n kind c - env|0 )
+    | c k n |
+    0
+    env each>
+    >r
+        k c r@ kind ccount compare 0= if
+            r@ data @ n = if
+                drop r@  ( leave on stack )
+            then
+        then
+    r> drop
 ;
 
 ( --== Pic stuff ==-- )
@@ -420,6 +436,7 @@ constant /pic
         r> >in !  (create) @ , $01234567 , 
     then 
     does>  @ runvec
+    [dev] [if] noop [then] \ thwart tail-call optimzation
 ;
 : ?state
     already ?exit
@@ -427,11 +444,12 @@ constant /pic
     s" state" (env) dup @ 0 = if
         cell stateOffset +! 
         stateOffset @ swap ( env ) !  
-        r> >in !  (create) stateOffset @ 256 cells + , $01234567 ,
+        r> >in !  (create) stateOffset @ , $01234567 ,
     else
-        r> >in !  (create) @ 256 cells + , $01234567 , 
+        r> >in !  (create) @ , $01234567 , 
     then 
     does>  woke on @ dup state# ! runvec
+    [dev] [if] noop [then] \ thwart tail-call optimzation
 ;
 : action: ( - <role> <name> ...code... ; ) ( ... - ... ) 
     role ($)
@@ -538,6 +556,7 @@ defer draw
 : animate  ( n speed - )
     rate ! 0 animctr ! anim# ! ;
 
+: .state  state# @ s" state" (n) ?dup if >nfa ccount type space then ;
 
 ( --== Rendering/logic ==-- )
 
@@ -566,8 +585,11 @@ create drawlist 1023 cells /allot
     r> drop }
 ;
 
-: acts  each> { act } ;
-
+[defined] dev [if]
+    : acts  each> { ['] act catch } ?dup if cr (throw) type cr ." STOPPED: " woke off me block. ." -_-;;; while in state: " .state then ;
+[else]
+    : acts  each> { act } ;
+[then]
 ( --== Tools stuff pt 1 ==-- )
 
 : toolSource  tool @> source ;
@@ -678,6 +700,7 @@ newBlockFile? [if]
     playfield >stage >!
     add-pic default prg/gamester/data/default.png  this lock on
     install prg/gamester/tools/mapster.f mapster
+    256 cells stateOffset !
 [then]
 
 ( Load shared.f of project )
