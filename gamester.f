@@ -95,6 +95,7 @@ blockstruct
     record moduleType   \ word
     record vocab        \ word
     #64 field source
+    cell field vtable   \ handle
 drop #128 constant modulestruct
 
 : block  #2 rshift image + ;
@@ -229,9 +230,7 @@ modulestruct
     cell toolfield >toolScene
 drop #256 constant toolstruct
 
-modulestruct
-    cell field vtable       \ handle
-drop #256 constant rolestruct
+modulestruct constant rolestruct
 
 
 ( --== bank stuff ==-- )
@@ -307,14 +306,17 @@ blockstruct
 constant /constant
 
 : (env)  ( kind c - <name> adr )   \ address is of the value
-    locals| c k |
+    >in @ locals| (in) c k |
     env (?$) ?dup if
         k c third kind ccount compare 0= if  data  ;then
         true abort" Found constant is of the wrong kind."
+    else
+        (in) >in !
+        env one dup named
+        k c third kind cplace
+        data
     then
-    env one dup named
-    k c third kind cplace
-    data ;
+;
 
 ( --== Pic stuff ==-- )
 
@@ -447,12 +449,9 @@ constant /pic
         r@ path ccount ?rolePath included
     r> drop
 ;
-: //vtable ( role - )
-    here swap vtable ! 512 cells /allot
-;
 : define-role  ( - <role> <name> )  \ defines a vocab and assigns it to the current role
     role ($) >r
-    r@ vtable @ 0 = if  r@ //vtable  then
+    r@ here swap vtable ! 512 cells /allot
     <name> r@ vocab cplace
     define
     r> drop
