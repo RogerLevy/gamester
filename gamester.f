@@ -368,7 +368,9 @@ drop #384
     0 field animations
 constant /pic
 
-: animation  ( n pic - adr )  animations swap #16 * + ;
+#1024 0 animations - #16 / constant max-animations
+
+: animation  ( n pic - adr )  animations swap max-animations mod  #16 * + ;
 
 : load-pic  ( pic - )
     >r
