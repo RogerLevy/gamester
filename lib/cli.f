@@ -37,7 +37,9 @@
     pic one dup named   to this
     <word> this path cplace
     16 16 this subsize 2!
-    this load-pic
+    this ['] load-pic catch if
+        delete
+    then
 ;
 
 : new-pic  ( w h - <name> <path> )
