@@ -376,11 +376,12 @@ constant /pic
     >r
         cr r@ .block
         r@ path ccount ?datapath echo ['] loadbmp softcatch
-        r@ handle !
+        ?dup if r@ handle ! then
     r> drop
 ;
 
 : save-pic  ( pic - )
+    dup lock @ if drop ;then
     dup handle @ 0 = if drop ;then
     >r
         r@ handle @  r@ path ccount ?datapath ['] savebmp softcatch
