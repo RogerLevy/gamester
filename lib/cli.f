@@ -1,7 +1,6 @@
 
-: list  ( bank - )
-    each> cr .block ;
-
+: list  ( bank - )  each> cr .block ;
+: .paths ( bank - )  each> cr dup .block path ccount type ;
 
 ( --== Experimental editing tools ==-- )
 
@@ -38,7 +37,7 @@
     <word> this path cplace
     16 16 this subsize 2!
     this ['] load-pic catch if
-        delete
+        this delete
     then
 ;
 
