@@ -6,7 +6,7 @@ lasttool off
 
 : normalize-path
     >r
-        r@ ccount s" data/" search if  r@ place  else  2drop  then
+        r@ ccount s" data/" search if  r@ cplace  else  2drop  then
     r> drop
 ;
 
@@ -16,13 +16,15 @@ lasttool off
 
 normalize-pics
 
+\ save out another block file to data/
+image /image project count s[ s" data/" +s blkpath count -path +s ]s file!
 
 
 : normalize-blkpath   \ can't use normalize-path ... different kinda counted string :'(
-    blkpath count s" data/" search if  blkpath place  else  2drop  then
+    s" data/" blkpath count -path strjoin blkpath place
 ;
 
-save
+\ and change the blkpath to point to that instead
 normalize-blkpath
 
 
@@ -34,3 +36,4 @@ normalize-blkpath
 ;
 
 gild
+

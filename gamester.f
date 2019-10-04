@@ -665,12 +665,10 @@ defer resume
 : load-blocks
     cr ." Gamester: Loading... " show
     load-pics
-    [dev] [if]
-        project count s" shared.f" strjoin file-exists if
-            common
-            s" depend " s[ project count +s s" shared.f" +s ]s ['] evaluate softcatch
-        then
-    [then]
+    project count s" shared.f" strjoin file-exists if
+        common
+        s" depend " s[ project count +s s" shared.f" +s ]s ['] evaluate softcatch
+    then
     load-roles
     load-systems
     cr ." Gamester: Done! "
