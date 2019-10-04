@@ -114,7 +114,7 @@ drop #128 constant modulestruct
 : delete   dup locked? if drop ;then begin dup off >chain @ ?dup while block repeat ;
 : chain  ( src dest - ) begin dup >chain @ dup while nip repeat drop >chain >! ;
 : copy  dup >r 1 blocks move r> on ;
-: block.  dup @ #-1 = if h. else >nfa ccount type space then ;
+: .block dup @ #-1 = if h. else >nfa ccount type space then ;
 
 ( --== Structures ==-- )
 
@@ -372,16 +372,16 @@ constant /pic
 
 : load-pic  ( pic - )
     >r
-        cr r@ path ccount type
-        r@ path ccount ?datapath echo loadbmp r@ handle !
+        cr r@ .block
+        r@ path ccount ?datapath echo ['] loadbmp softcatch
+        r@ handle !
     r> drop
 ;
 
 : save-pic  ( pic - )
     dup handle @ 0 = if drop ;then
     >r
-        cr r@ path ccount type
-        r@ handle @  r@ path ccount ?datapath savebmp
+        r@ handle @  r@ path ccount ?datapath ['] savebmp softcatch
     r> drop
 ;
 
@@ -610,7 +610,7 @@ create drawlist 1023 cells /allot
 ;
 
 [defined] dev [if]
-    : acts  each> { ['] act catch } ?dup if cr (throw) type cr ." STOPPED: " woke off me block. ." -_-;;; while in state: " .state then ;
+    : acts  each> { ['] act catch } ?dup if cr (throw) type cr ." STOPPED: " woke off me .block ." -_-;;; while in state: " .state then ;
 [else]
     : acts  each> { act } ;
 [then]
@@ -660,14 +660,27 @@ defer resume
     save-pics
 ;
 
+: load-blocks
+    cr ." Gamester: Loading... " show
+    load-pics
+    [dev] [if]
+        project count s" shared.f" strjoin file-exists if
+            common
+            s" depend " s[ project count +s s" shared.f" +s ]s ['] evaluate softcatch
+        then
+    [then]
+    load-roles
+    load-systems
+    cr ." Gamester: Done! "
+;
+
 : initialize
     (me) @ block as
     (this) @ block to this
-    load-pics
-    load-roles
-    load-systems
+    ['] load-blocks catch
     lasttool @ 0<> tool @ 0<> and if resume
     else quit tool @ lasttool ! then
+    throw
 ;
 
 
@@ -706,6 +719,9 @@ include prg/gamester/lib/cli.f
 
 ( --== Finish Startup ==-- )
 
+: presave  me (me) >!  this (this) >! ;
+:make bye   presave  ['] save ?alert  al_uninstall_system  0 ExitProcess ;
+
 newBlockFile? [if]
     playfield >stage >!
     add-pic default prg/gamester/data/default.png  this lock on
@@ -713,20 +729,5 @@ newBlockFile? [if]
     256 cells stateOffset !
 [then]
 
-( Load shared.f of project )
 cr .( PROJECT :::::::::::: ) project count type
-
-project count s" shared.f" strjoin file-exists [if]
-    common
-    s" depend " s[ project count +s s" shared.f" +s ]s evaluate
-[then]
-
-cr .( Gamester: Loading block file... )
-
-: presave  me (me) >!  this (this) >! ;
-
-:make bye   presave  save  al_uninstall_system  0 ExitProcess ;
-
 initialize
-
-cr .( Gamester: Done!  )

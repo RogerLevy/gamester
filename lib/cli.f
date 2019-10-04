@@ -1,6 +1,6 @@
 
 : list  ( bank - )
-    each> cr block. ;
+    each> cr .block ;
 
 
 ( --== Experimental editing tools ==-- )
