@@ -86,12 +86,19 @@ define-tool Mapster [if]
     ( --== Commandline ==-- )
     
     : load  ( scene - )
+        gui res 2@ 2>r
         gui copy
         gui layer1 layers /layer 4 * move
         gui layer1 /layer 4 * erase
         1 curLayer !
         gui res 2@ mapa @> { w 2! }
-        displaywh gui res 2!
+        2r@ or 0 = if
+            displaywh
+        else
+            2r@
+        then
+        gui res 2!
+        2r> 2drop
     ;
     : fillscr
         layer viewport h@ 16 / pfloor for
@@ -178,7 +185,7 @@ define-tool Mapster [if]
     : *element  gui one dup { swap kind# !  1 1 sx 2!  16 16 x 2! } ; 
     
     : add-actors
-        mapk *element dup mapa >! { w @ 0 = if 256 256 w 2! then } 
+        mapk *element dup mapa >! { w @ 0 = if 320 240 w 2! then } 
         tilesetk *element dup tileseta >! { }
         tilek *element dup tilea >! { 16 16 sx 2! }
         colork *element dup colora >! { }
