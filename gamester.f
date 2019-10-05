@@ -190,7 +190,7 @@ blockstruct
 constant simplestruct      \ for particles and environments
 
 #256
-    actorvar rolename #12 +
+    actorvar rolename #12 +  \ effectively 16 bytes
     actorvar attr    \ attribute flags
     actorvar ctype   \ collision flags
     actorvar cmask   \ collision mask
@@ -555,7 +555,9 @@ constant /pic
 
 ( --== Actor stuff ==-- )
 
-: sub@
+: actor[]  ( n slew -- actor )  swap 1 + blocks + ;
+
+: sub@+
     anim# @ >pic @> animation >r
     r@ c@ if
         r@ #1 + animctr @ 1i r@ c@ mod + c@ 1p sub# !
@@ -576,7 +578,7 @@ defer draw
 
 : draw-sprite  ( - )
     >pic @ 0 = if  placeholder  white  ;then
-    x 2@  >stage @> scroll 2@ 2-  at  sub@ >pic @> draw-tile ;
+    x 2@  >stage @> scroll 2@ 2-  at  sub@+ >pic @> draw-tile ;
 
 ' draw-sprite is draw
 
@@ -584,6 +586,8 @@ defer draw
     rate ! 0 animctr ! anim# ! ;
 
 : .state  state# @ s" state" (n) ?dup if >nfa ccount type space then ;
+
+
 
 ( --== Rendering/logic ==-- )
 
@@ -617,6 +621,47 @@ create drawlist 1023 cells /allot
 [else]
     : acts  each> { act } ;
 [then]
+
+
+: aabb  ( x y w h - x1 y1 x2 y2 )  2over 2+ ;
+
+: overlap? ( xyxy xyxy - flag )
+  2swap 2rot rot >= -rot <= and >r rot >= -rot <= and r> and ;
+
+: box  ( actor -- aabb )
+    { x 2@ ibx 2@ sx 2@ 2* 2+ ibw 2@ sx 2@ 2* aabb } ;
+
+: intersect?  ( obj1 obj2 -- flag )
+    >r box r> box overlap? ;
+
+
+?action hit ( other -- )
+
+: (detects) ( slew -- n )
+    0 0 | n other slew |
+    slew each> { 
+        1 +to n 
+        cmask @ ctype @ or if
+            1024 n do  \ only need to check the ones after this one
+                i slew actor[] to other
+                other enabled? if
+                    other { ctype @ } cmask @ and
+                    other { cmask @ } ctype @ and or if
+                        me other intersect? if
+                            sp@ >r
+                                other hit  me other { hit }
+                            r> sp! 
+                        then
+                    then
+                then
+            loop
+        then
+    }
+;
+
+: detects  ( slew -- )  (detects) drop ;
+
+
 ( --== Tools stuff pt 1 ==-- )
 
 : toolSource  tool @> source ;
@@ -653,8 +698,7 @@ defer resume
         black backdrop        
         stage draw-scene
         stage acts
-        \ 0 0 at role( test ) vtable @ #8 (h.0) text
-        \ 0 0 at asdfasdf #8 (h.0) text
+        stage detects
 ;
 
 : empty  save free-pics only Forth definitions also empty ;
