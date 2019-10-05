@@ -113,7 +113,7 @@ drop #128 constant modulestruct
 : @>  @ [dev] [if] dup 0 = abort" Invalid reference!" [then] block ;
 : delete   dup locked? if drop ;then begin dup off >chain @ ?dup while block repeat ;
 : chain  ( src dest - ) begin dup >chain @ dup while nip repeat drop >chain >! ;
-: copy  dup >r 1 blocks move r> on ;
+: copy  #16 #16 2+ 1 blocks #16 - move ;
 : .block dup @ #-1 = if h. else >nfa ccount type space then ;
 
 ( --== Structures ==-- )
