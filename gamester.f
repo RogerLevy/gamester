@@ -130,7 +130,7 @@ constant /assetheader
 0
     record tilemap-config   ( ~tilemap, ~tileset )
     : >tilemap   tilemap-config ;
-    : >tileset     tilemap-config cell+ ;
+    : >tileset   tilemap-config cell+ ;
     record parallax         ( x, y )
     record scroll-offset    ( x, y )
     record bounds           ( x, y, w, h ) 
@@ -604,15 +604,23 @@ create drawlist 1023 cells /allot
 : sweep  ( slew - )
     each> { dead @ if me delete then } ; 
 
+create overlays  0 , 0 , 0 , 0 ,
+: :overlay  ( n -- <code> ; ) cells overlays + :noname swap ! ;
+: overlay  ( n -- )  cells overlays + @ execute ;
+
 : draw-scene ( scene - )
     me { >r
     r@ res 2@ or 0 = if viewwh r@ res 2! then
     r@ res 2@ resolution
-    r@ scroll 2@ r@ layer1 draw-layer 
-    r@ scroll 2@ r@ layer2 draw-layer 
-    r@ draws
-    r@ scroll 2@ r@ layer3 draw-layer 
-    r@ scroll 2@ r@ layer4 draw-layer 
+    r@ scroll 2@ r@ layer1 draw-layer
+    0 overlay
+    r@ scroll 2@ r@ layer2 draw-layer
+    1 overlay
+        r@ draws  \ temporary
+    r@ scroll 2@ r@ layer3 draw-layer
+    2 overlay
+    r@ scroll 2@ r@ layer4 draw-layer
+    3 overlay
     r> drop }
 ;
 
