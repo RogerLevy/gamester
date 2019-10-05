@@ -221,6 +221,7 @@ blockstruct
     cell global stateOffset
     cell global (me)
     cell global (this)
+    cell global paused       \ disables actor logic
 drop
 #128 constant globals
 
@@ -705,8 +706,10 @@ defer resume
         <s> pressed ctrl? and if save then 
         black backdrop        
         stage draw-scene
-        stage acts
-        stage detects
+        paused @ not if
+            stage acts
+            stage detects
+        then
 ;
 
 : empty  save free-pics only Forth definitions also empty ;
