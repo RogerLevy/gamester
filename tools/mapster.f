@@ -201,6 +201,7 @@ define-tool Mapster [if]
         <e> pressed if ?eraser ;then 
         <s> pressed ctrl? and if  save  ;then
         <z> pressed ctrl? and if  undo  ;then
+        <f> pressed ctrl? and if  fillscr  ;then
         <del> pressed shift? not and if  clear-tile  ;then
         <del> pressed shift? and if  fill-tile  ;then
         gui each> { kind 'logic @ execute }
