@@ -573,7 +573,8 @@ create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cy
 : ?color 8 mod colors vexec  ;
 
 : placeholder  ( - )
-    x 2@ sbx 2@ 2+ at  me id @ ?color  sbw 2@ rectf ;
+    x 2@ ibx 2@ 2+ at  me id @ ?color 0.75 alpha  ibw 2@ rectf
+    x 2@ sbx 2@ 2+ at  red  sbw 2@ rect ;
 
 defer draw
 
