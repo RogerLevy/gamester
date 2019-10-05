@@ -571,16 +571,17 @@ constant /pic
 create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cyan , ' pink , 
 
 : ?color 8 mod colors vexec  ;
+: scrolled  >stage @> scroll 2@ 2- ;
 
 : placeholder  ( - )
-    x 2@ ibx 2@ 2+ at  me id @ ?color 0.75 alpha  ibw 2@ rectf
-    x 2@ sbx 2@ 2+ at  red  sbw 2@ rect ;
+    x 2@ ibx 2@ 2+ scrolled at  me id @ ?color 0.75 alpha  ibw 2@ rectf
+    x 2@ sbx 2@ 2+ scrolled at  red  sbw 2@ rect ;
 
 defer draw
 
 : draw-sprite  ( - )
     >pic @ 0 = if  placeholder  white  ;then
-    x 2@  >stage @> scroll 2@ 2-  at  sub@+ >pic @> draw-tile ;
+    x 2@  scrolled  at  sub@+ >pic @> draw-tile ;
 
 ' draw-sprite is draw
 
