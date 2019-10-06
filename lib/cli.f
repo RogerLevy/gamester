@@ -125,5 +125,6 @@
     gui clear-bank
     contextualize
     starter ccount evaluate
+    paused off
 ;
 
