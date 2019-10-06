@@ -114,7 +114,8 @@ drop #128 constant modulestruct
 : delete   dup locked? if drop ;then begin dup off >chain @ ?dup while block repeat ;
 : chain  ( src dest - ) begin dup >chain @ dup while nip repeat drop >chain >! ;
 : copy  #16 #16 2+ 1 blocks #16 - move ;
-: .block dup @ #-1 = if h. else >nfa ccount type space then ;
+: block>name  dup @ #-1 = if #8 (h.0) else >nfa ccount then ;
+: .block  block>name type space ;
 
 ( --== Structures ==-- )
 
@@ -222,6 +223,7 @@ blockstruct
     cell global (me)
     cell global (this)
     cell global paused       \ disables actor logic
+    cell global (stage)      \ for preserving in QUIT and RUN
 drop
 #128 constant globals
 
@@ -695,12 +697,24 @@ defer resume
 
 : asdf  quit ;
 
+: ?draw-stage-name
+    [dev] [if]
+        repl @ -exit
+        unmount
+        stage block>name default-font stringwh 8 8 2+ | h w |
+        default-font font>
+        displayw w - 0 at   w h black rectf  4 4 +at  stage block>name white text
+        mount
+    [then]
+;
+
 : quit
     common
     0 to 'step  0 to 'pump
     tool @ lasttool !
     tool off
     ['] draw-sprite is draw
+    (stage) @ if (stage) @> else playfield then switchto
     show>
         [dev] [if]
             <`> pressed if resume ;then
@@ -712,9 +726,10 @@ defer resume
             stage acts
             stage detects
         then
+        ?draw-stage-name
 ;
 
-: presave  me (me) >!  this (this) >! ;
+: presave  me (me) >!  this (this) >!  stage (stage) >! ;
 : empty  presave  save free-pics only Forth definitions also empty ;
 
 :make save-assets

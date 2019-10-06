@@ -119,7 +119,7 @@
     tool @> load-tool
 ;
 
-: run ( -- <name> )
+: (run) ( -- <name> )
     system ($) tool >!
     tool @ lasttool !
     gui clear-bank
@@ -128,3 +128,9 @@
     paused off
 ;
 
+: run  ( -- <name> )
+    stage (stage) >!
+    ['] (run) catch if
+        (stage) @> switchto
+    then
+;
