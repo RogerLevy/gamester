@@ -41,7 +41,7 @@ define-tool Scenester [if]
     : pan  mdelt 2negate scrollx 2@ 2+ layer limit-scroll scrollx 2! ;
     : pick  hovered ?dup if dup to draggee as then ;
     : drag  draggee if  mdelt draggee { x 2+! } then ;
-    : ?drop  draggee if  0 to draggee  then ;
+    : ?drop  draggee if  0 to draggee  x 2@ 2pfloor x 2! then ;
     
     : load  ( scene -- )  \ not to be used to change the current slew.  use SWITCHTO for that.
         dup curScene >!
@@ -91,7 +91,8 @@ define-tool Scenester [if]
             stage draw-scene
             
             \ draw highlight on current actor (me)
-            x 2@ ibx 2@ 2+ scrolled at  ibw 2@ red rect
+            x 2@ ibx 2@ 2+ scrolled at  ibw 2@ black rect
+            -1 -1 +at ibw 2@ 2 2 2+ white rect
                         
             ?draw-stage-name
             
