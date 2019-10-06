@@ -217,6 +217,14 @@ define-tool Mapster [if]
     : (pump)
         pump>
             app-events
+            etype ALLEGRO_EVENT_DISPLAY_SWITCH_IN = if
+                tspic if
+                    tsbmp if
+                        tsbmp -bmp  tspic load-pic
+                        cr ." Refreshed tileset"
+                    then
+                then
+            then
     ;
     
     : resume-mapster
