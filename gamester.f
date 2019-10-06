@@ -648,7 +648,7 @@ create overlays  0 , 0 , 0 , 0 ,
 
 ?action hit ( other -- )
 
-: (detects) ( slew -- n )
+: detects ( slew -- )
     0 0 | n other slew |
     slew each> { 
         1 +to n 
@@ -669,8 +669,6 @@ create overlays  0 , 0 , 0 , 0 ,
         then
     }
 ;
-
-: detects  ( slew -- )  (detects) drop ;
 
 
 ( --== Tools stuff pt 1 ==-- )
