@@ -8,7 +8,6 @@ define-tool Scenester [if]
     drop
     
     0 value draggee
-    
 
     : layer  curLayer @ 4 mod /layer * stage layer1 + ;
     : scrollx  stage scroll ;
@@ -17,6 +16,28 @@ define-tool Scenester [if]
     : mdelt  mdelta globalscale dup 2/ ;
     : hovered   0 stage each> { maus scrollx 2@ 2+ box within? if drop me then } ;
 
+    : new-actor ( -- )
+        stage one as 
+        16 16 sbw 2!
+        16 16 ibw 2!
+        1 1 sx 2!
+        maus scrollx 2@ 2+ x 2!
+    ;
+    
+    : dup-actor ( -- )
+        me new-actor me copy
+        maus scrollx 2@ 2+ x 2!
+    ;
+    
+    : delete-actor  ( -- )
+        me delete
+    ;
+    
+    : jump ( -- <name> )
+        stage ($) as
+        x 2@ layer viewport wh@ 2 2 2/ 2- scrollx 2!
+    ;
+        
     : pan  mdelt 2negate scrollx 2@ 2+ layer limit-scroll scrollx 2! ;
     : pick  hovered ?dup if dup to draggee as then ;
     : drag  draggee if  mdelt draggee { x 2+! } then ;
@@ -32,8 +53,6 @@ define-tool Scenester [if]
         stage curScene @> copy
     ;
     
-    
-
     : (pump)
         pump>
             app-events
@@ -48,6 +67,9 @@ define-tool Scenester [if]
             else
                 ?drop
             then
+            <a> pressed ctrl? and if new-actor then
+            <d> pressed ctrl? and if dup-actor then
+            <del> pressed if delete-actor then
     ;
     
 \     : (step)
