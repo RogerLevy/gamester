@@ -702,8 +702,10 @@ defer resume
     tool off
     ['] draw-sprite is draw
     show>
-        <`> pressed if resume ;then
-        <s> pressed ctrl? and if save then 
+        [dev] [if]
+            <`> pressed if resume ;then
+            <s> pressed ctrl? and if save then 
+        [then]
         black backdrop        
         stage draw-scene
         paused @ not if
