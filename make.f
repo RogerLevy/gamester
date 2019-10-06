@@ -1,8 +1,7 @@
 system clear-bank
 gui clear-bank
 
-tool off
-lasttool off
+quit
 
 : normalize-path
     >r
