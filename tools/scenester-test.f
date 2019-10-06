@@ -1,0 +1,1 @@
+reinstall prg/gamester/tools/scenester.f scenester

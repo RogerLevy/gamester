@@ -187,7 +187,7 @@ blockstruct
     actorvar animctr
     actorvar rate    \ animation speed
     actorvar woke    \ if woke is off, state isn't executed.
-    actorvar hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solid hitbox)
+    actorvar hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solidity and interaction hitboxes)
 constant simplestruct      \ for particles and environments
 
 #256
@@ -577,7 +577,8 @@ create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cy
 
 : placeholder  ( - )
     x 2@ ibx 2@ 2+ scrolled at  me id @ ?color 0.75 alpha  ibw 2@ rectf
-    x 2@ sbx 2@ 2+ scrolled at  red  sbw 2@ rect ;
+    x 2@ sbx 2@ 2+ scrolled at  red  sbw 2@ rect
+;
 
 defer draw
 
@@ -677,12 +678,13 @@ default-scene-options value scene-options
 ( --== Tools stuff pt 1 ==-- )
 
 : toolSource  tool @> source ;
+
 : load-tool  ( tool -- )
     tool @ >r  tool >!
-    warning on
-    common
-    toolSource ccount included
-    warning off
+        warning on
+        common
+        toolSource ccount included
+        warning off
     r> tool !
 ;
 
