@@ -107,8 +107,8 @@
 ( --== Tools ==-- )
 
 : install  ( -- <scriptpath> <name> )
-    true to installing?
     quit
+    true to installing?
     system one tool >!
     s" tool" tool @> moduleType cplace
     scene one
@@ -120,6 +120,7 @@
 ;
 
 : (run) ( -- <name> )
+    quit
     system ($) tool >!
     tool @ lasttool !
     gui clear-bank
@@ -133,4 +134,13 @@
     ['] (run) catch if
         (stage) @> switchto
     then
+;
+
+: reinstall ( -- <scriptpath> <name> )
+    >in @ >r
+    <word> 2drop
+    system (?$) ?dup if delete then
+    r@ >in !
+    install
+    r> drop
 ;
