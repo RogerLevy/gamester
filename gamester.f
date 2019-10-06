@@ -714,7 +714,8 @@ defer resume
         then
 ;
 
-: empty  save free-pics only Forth definitions also empty ;
+: presave  me (me) >!  this (this) >! ;
+: empty  presave  save free-pics only Forth definitions also empty ;
 
 :make save-assets
     save-pics
@@ -777,7 +778,6 @@ include prg/gamester/lib/cli.f
 
 ( --== Finish Startup ==-- )
 
-: presave  me (me) >!  this (this) >! ;
 :make bye   presave  ['] save ?alert  al_uninstall_system  0 ExitProcess ;
 
 newBlockFile? [if]
