@@ -702,7 +702,6 @@ defer resume
 
 : ?draw-stage-name
     [dev] [if]
-        repl @ -exit
         unmount
         stage block>name default-font stringwh 8 8 2+ | h w |
         default-font font>
