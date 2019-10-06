@@ -609,9 +609,10 @@ create drawlist 1023 cells /allot
 : sweep  ( slew - )
     each> { dead @ if me delete then } ; 
 
-create overlays  0 , 0 , 0 , 0 ,
-: :overlay  ( n -- <code> ; ) cells overlays + :noname swap ! ;
-: overlay  ( n -- )  cells overlays + @ execute ;
+create default-scene-options  0 , 0 , 0 , 0 ,
+default-scene-options value scene-options
+: :overlay  ( options n -- <code> ; ) cells + :noname swap ! ;
+: overlay  ( n -- )  cells scene-options + @ execute ;
 
 : draw-scene ( scene - )
     me { >r
@@ -715,6 +716,7 @@ defer resume
     tool off
     ['] draw-sprite is draw
     (stage) @ if (stage) @> else playfield then switchto
+    default-scene-options to scene-options
     show>
         [dev] [if]
             <`> pressed if resume ;then

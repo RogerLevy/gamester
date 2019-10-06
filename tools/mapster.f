@@ -32,6 +32,8 @@ define-tool Mapster [if]
         cell field 'logic
     constant /kind
 
+    create mapster-options 0 , 0 , 0 , 0 , 
+
     16 stack: kinds  16 cells /allot
     : kind:  ( - <name> adr )
         kinds length constant  here dup kinds push /kind /allot ;
@@ -80,7 +82,11 @@ define-tool Mapster [if]
         mapa @> { hovering? } if 0 curtile ! ;then
         tilea @> { hovering? } if 0 0 0 0 4af curColor 4! ;then
     ;
-    : undo  tsbmp -bmp  tspic load-pic  wipe ;
+    : undo
+        tsbmp -bmp  tspic load-pic  
+        
+        wipe
+    ;
 
 
     ( --== Commandline ==-- )
@@ -230,6 +236,7 @@ define-tool Mapster [if]
     : resume-mapster
         tool-scene gui copy
         (pump)
+        mapster-options to scene-options
         show>
             black backdrop
             tspic block> 0 = if s" No tileset loaded." text ;then
