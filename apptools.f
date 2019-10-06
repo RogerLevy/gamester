@@ -1,6 +1,6 @@
 \ #2 #0 #0 [ws] [checkver]
-depend ramen/lib/std/rangetools.f
 
+depend ramen/lib/std/rangetools.f
 
 : app-events
     etype ALLEGRO_EVENT_MOUSE_AXES = if

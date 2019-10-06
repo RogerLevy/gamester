@@ -756,8 +756,11 @@ defer resume
     (me) @ block as
     (this) @ block to this
     ['] load-blocks catch
-    lasttool @ 0<> tool @ 0<> and if resume
-    else quit tool @ lasttool ! then
+    lasttool @ 0<> tool @ 0<> and if
+        resume
+    else
+        quit tool @ lasttool !
+    then
     throw
 ;
 
