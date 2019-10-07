@@ -62,7 +62,7 @@ depth 0 = [if] s" default.blk" [then]
     project count blkpath count strjoin
 ;
 : revert  (blkpath) image /image @file ;
-: save    image /image (blkpath) file!  save-assets  cr ." Saved block image and modified assets." ;
+: save    image /image (blkpath) file!  save-assets  cr ." Saved block image, and any modified assets." ;
 
 (blkpath) file-exists not [if]
     (blkpath) r/w create-file drop close-file drop
@@ -145,6 +145,7 @@ blockstruct
     record scroll
     record res
     record main-bounds      ( x, y, w, h )
+    record >slew  \ used to associate a slew in Scenester during save
 constant /sceneheader
 #512
     /layer field layer1 
@@ -298,7 +299,7 @@ modulestruct constant rolestruct
     loop 2drop 
 ;
 : copy-bank  ( src dest -- )
-    #16 #16 2+ 1024 blocks #16 - move ;
+    #16 #16 2+ /bank #16 - move ;
 
 ( --== Engine memory layout ==-- )
 

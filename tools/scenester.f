@@ -47,6 +47,7 @@ define-tool Scenester [if]
     
     : load  ( scene -- )  \ not to be used to change the current slew.  use SWITCHTO for that.
         dup curScene >!
+        dup >slew @ ?dup if block switchto then
         stage copy
     ;
 
@@ -57,10 +58,11 @@ define-tool Scenester [if]
         then ( scene )
         stage over copy
         curScene >!
+        stage curScene @> >slew >!
         r> drop
     ;
     
-    : save  stage curScene @> copy  cr ." Saved current scene." ;
+    : save  stage curScene @> copy  cr ." Saved current scene."  save ;
 
     : draw-scene-name
         curScene @ -exit
@@ -70,7 +72,8 @@ define-tool Scenester [if]
         default-font font>
         displayw w - 24 at   w h black rectf  4 4 +at  str c white text
         mount
-    ;    
+    ;
+    
     : update-scenes
         stage curSlew >!
     ;
@@ -78,7 +81,6 @@ define-tool Scenester [if]
     : (pump)
         pump>
             app-events
-            
     ;
     
     : controls
