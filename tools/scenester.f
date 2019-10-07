@@ -104,6 +104,8 @@ define-tool Scenester [if]
         (pump)
 \         (step)
         curSlew @ if curSlew @> switchto then
+        stage curScene @> <> if  curScene @> load  then 
+        
         tool-options to scene-options
         show>
             unmount dgreen backdrop
