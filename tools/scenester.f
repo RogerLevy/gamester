@@ -33,12 +33,14 @@ define-tool Scenester [if]
         me delete
     ;
     
+    : scroll!  layer limit-scroll scrollx 2! ;
+    
     : jump ( -- <name> )
         stage ($) as
-        x 2@ layer viewport wh@ 2 2 2/ 2- scrollx 2!
+        x 2@ layer viewport wh@ 2 2 2/ 2- scroll!
     ;
         
-    : pan  mdelt 2negate scrollx 2@ 2+ layer limit-scroll scrollx 2! ;
+    : pan  mdelt 2negate scrollx 2@ 2+ scroll! ;
     : pick  hovered ?dup if dup to draggee as then ;
     : drag  draggee if  mdelt draggee { x 2+! } then ;
     : ?drop  draggee if  0 to draggee  x 2@ 2pfloor x 2! then ;
