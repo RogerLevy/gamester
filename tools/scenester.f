@@ -49,10 +49,30 @@ define-tool Scenester [if]
         dup curScene >!
         stage copy
     ;
+
+    : save-scene ( -- <name> )
+        >in @ >r scene (?$) ?dup 0 = if
+            r@ >in !
+            scene one dup named
+        then ( scene )
+        stage over copy
+        curScene >!
+        r> drop
+    ;
     
+    : save  stage curScene @> copy  cr ." Saved current scene." ;
+
+    : draw-scene-name
+        curScene @ -exit
+        unmount
+        s" Current Scene: "  curScene @> block>name strjoin
+            2dup default-font stringwh 8 8 2+ | h w c str |
+        default-font font>
+        displayw w - 24 at   w h black rectf  4 4 +at  str c white text
+        mount
+    ;    
     : update-scenes
         stage curSlew >!
-        stage curScene @> copy
     ;
     
     : (pump)
@@ -97,6 +117,7 @@ define-tool Scenester [if]
             -1 -1 +at ibw 2@ 2 2 2+ white rect
                         
             ?draw-stage-name
+            draw-scene-name
             
             controls
             
