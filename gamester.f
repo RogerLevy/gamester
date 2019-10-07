@@ -441,7 +441,7 @@ constant /pic
 ( --== Slew stuff ==-- )
 
 0 value xt
-: shout  ( xt slew )
+: announce  ( xt slew )
     swap to xt each> as xt execute ;
 
 ( --== Role stuff ==-- )
