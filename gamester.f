@@ -445,7 +445,7 @@ constant /pic
 
 0 value xt
 : announce  ( xt slew )
-    swap to xt each> as xt execute ;
+    swap to xt each> { >role @ if xt execute then } ;
 
 ( --== Role stuff ==-- )
 
