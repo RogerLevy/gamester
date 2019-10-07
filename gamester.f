@@ -62,7 +62,7 @@ depth 0 = [if] s" default.blk" [then]
     project count blkpath count strjoin
 ;
 : revert  (blkpath) image /image @file ;
-: save    image /image (blkpath) file!  save-assets ;
+: save    image /image (blkpath) file!  save-assets  cr ." Saved block image and modified assets." ;
 
 (blkpath) file-exists not [if]
     (blkpath) r/w create-file drop close-file drop
@@ -114,7 +114,7 @@ drop #128 constant modulestruct
 : delete   dup locked? if drop ;then begin dup off >chain @ ?dup while block repeat ;
 : chain  ( src dest - ) begin dup >chain @ dup while nip repeat drop >chain >! ;
 : copy  #16 #16 2+ 1 blocks #16 - move ;
-: block>name  dup @ #-1 = if #8 (h.0) else >nfa ccount then ;
+: block>name  dup @ #-1 = over c@ 0= or if #8 (h.0) else >nfa ccount then ;
 : .block  block>name type space ;
 
 ( --== Structures ==-- )
@@ -144,6 +144,7 @@ blockstruct
                        \ could add extra params like volume and pitch
     record scroll
     record res
+    record main-bounds      ( x, y, w, h )
 constant /sceneheader
 #512
     /layer field layer1 
@@ -296,6 +297,8 @@ modulestruct constant rolestruct
         block+        
     loop 2drop 
 ;
+: copy-bank  ( src dest -- )
+    #16 #16 2+ 1024 blocks #16 - move ;
 
 ( --== Engine memory layout ==-- )
 
@@ -515,6 +518,7 @@ constant /pic
     layer-template r@ layer3 /layer move
     layer-template r@ layer4 /layer move
     viewwh r@ res 2!
+    0 0 512 16 * dup r@ main-bounds xywh!
     r> drop 
 ;
 : filter-slew  ( src-scene slew - )  \ removes excluded actors 
@@ -703,9 +707,10 @@ defer resume
 : ?draw-stage-name
     [dev] [if]
         unmount
-        stage block>name default-font stringwh 8 8 2+ | h w |
+        s" Stage: " stage block>name strjoin
+            2dup default-font stringwh 8 8 2+ | h w c str |
         default-font font>
-        displayw w - 0 at   w h black rectf  4 4 +at  stage block>name white text
+        displayw w - 0 at   w h black rectf  4 4 +at  str c white text
         mount
     [then]
 ;
