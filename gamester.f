@@ -27,6 +27,7 @@ common
 ( --== Variables ==-- )
 
 0 value me
+0 value you
 0 value this
 0 value installing?
 0 value newBlockFile?
@@ -655,22 +656,25 @@ default-scene-options value scene-options
     >r box r> box overlap? ;
 
 
-?action hit ( other -- )
+?action hit ( -- )
+?action struck ( -- )
 
 : detects ( slew -- )
-    0 0 | n other slew |
-    slew each> { 
-        1 +to n 
+    0 dup dup | hitter? hittee? n slew |
+    slew each> {
+        1 +to n
         cmask @ ctype @ or if
             1024 n do  \ only need to check the ones after this one
-                i slew actor[] to other
-                other enabled? if
-                    other { ctype @ } cmask @ and
-                    other { cmask @ } ctype @ and or if
-                        me other intersect? if
+                i slew actor[] to you
+                you enabled? if
+                    you { cmask @ } ctype @ and to hitter?
+                    you { ctype @ } cmask @ and to hittee?
+                    hitter? hittee? or if
+                        me you intersect? if
                             sp@ >r
-                                other hit  me other { hit }
-                            r> sp! 
+                            hitter? if  hit  you { struck } then
+                            hittee? if  you { hit }  struck then
+                            r> sp!
                         then
                     then
                 then
