@@ -50,6 +50,16 @@ defer save-assets  ( -- )  :make save-assets ;
 : ?datapath   2dup s" /" search nip nip ?exit  >dataPath ;
 : ?rolePath   2dup s" /" search nip nip ?exit  >rolePath ;
 
+: inflate  ( path c dest len -- )
+    2swap file@ | size mem |
+    ( dest len ) mem size 2swap .s decompress drop
+    mem free drop ;
+
+: deflate  ( src len path c -- )
+    64 megs dup allocate throw | mem size |
+    2>r  mem size .s compress mem swap 2r> file!
+    mem free drop ;
+
 ( --== block image ==-- )
 
 64 megs constant /image  
@@ -63,7 +73,7 @@ depth 0 = [if] s" default.blk" [then]
     project count blkpath count strjoin
 ;
 : revert  (blkpath) image /image @file ;
-: save    image /image (blkpath) file!  save-assets  cr ." Saved block image, and any modified assets." ;
+: save    image /image (blkpath) file! save-assets  cr ." Saved block image, and any modified assets." ;
 
 (blkpath) file-exists not [if]
     (blkpath) r/w create-file drop close-file drop
@@ -652,7 +662,8 @@ default-scene-options value scene-options
 ;
 
 [defined] dev [if]
-    : acts  each> { ['] act catch ?dup if cr (throw) type cr ." STOPPED: " woke off me .block ." -_-;;; while in state: " .state then } ;
+    : disable  woke off cr ." STOPPED: " me .block ." -_-;;; while in state: " .state ;
+    : acts  each> { ['] act catch ?dup if cr (throw) type disable then } ;
 [else]
     : acts  each> { act } ;
 [then]
