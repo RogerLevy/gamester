@@ -449,6 +449,20 @@ constant /pic
 : announce  ( xt slew )
     swap to xt each> { >role @ if xt execute then } ;
 
+: in-bank?  ( val bank -- flag )  - dup /bank < swap 0 >= and ;
+
+: copy-slew  ( src dest -- )
+    | dest src |
+    src dest copy-bank
+    dest each> a! #1024 cell/ for
+        @a src in-bank? if
+            @a src - dest + !+
+        else
+            cell +a
+        then
+    loop
+;
+
 ( --== Role stuff ==-- )
 
 : runvec  ( ... ofs - ... )   >role @> vtable @ + @ execute ;
