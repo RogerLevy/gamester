@@ -93,6 +93,7 @@ define-tool Scenester [if]
             then
             <a> pressed ctrl? and if new-actor then
             <d> pressed ctrl? and if dup-actor then
+            <s> pressed ctrl? and if save then 
             <del> pressed if delete-actor then
     ;
     

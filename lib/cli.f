@@ -70,7 +70,7 @@
 
 : add-role ( - <name> <path> )
     role one dup named   to this
-    <word> this path cplace
+    <word> this source cplace
     this ['] load-role catch ?dup if
         this delete
         throw

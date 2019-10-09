@@ -97,7 +97,7 @@ drop #32 constant blockstruct
 blockstruct
     record moduleType   \ word
     record vocab        \ word
-    #64 field source
+    #60 field source
     cell field vtable   \ handle
 drop #128 constant modulestruct
 
@@ -115,7 +115,8 @@ drop #128 constant modulestruct
 : delete   dup locked? if drop ;then begin dup off >chain @ ?dup while block repeat ;
 : chain  ( src dest - ) begin dup >chain @ dup while nip repeat drop >chain >! ;
 : copy  #16 #16 2+ 1 blocks #16 - move ;
-: block>name  dup @ #-1 = over c@ 0= or if #8 (h.0) else >nfa ccount then ;
+: ?null  ?dup 0 = if s" Not a block." r> drop then ;
+: block>name  ?null dup @ #-1 = over c@ 0= or if #8 (h.0) else >nfa ccount then ;
 : .block  block>name type space ;
 
 ( --== Structures ==-- )
@@ -382,8 +383,7 @@ constant /pic
 
 : load-pic  ( pic - )
     >r
-        cr r@ .block
-        r@ path ccount ?datapath echo ['] loadbmp softcatch
+        r@ path ccount ?datapath echo ['] loadbmp softcatch  ." pic( " r@ .block ." ) "
         ?dup if r@ handle ! then
     r> drop
 ;
@@ -499,7 +499,7 @@ constant /pic
 : load-role  ( role - )
     >r
         common
-        r@ path ccount ?rolePath included
+        r@ source ccount ?rolePath included
     r> drop
 ;
 : define-role  ( - <role> <name> )  \ defines a vocab and assigns it to the current role
@@ -638,7 +638,7 @@ default-scene-options value scene-options
 ;
 
 [defined] dev [if]
-    : acts  each> { ['] act catch } ?dup if cr (throw) type cr ." STOPPED: " woke off me .block ." -_-;;; while in state: " .state then ;
+    : acts  each> { ['] act catch ?dup if cr (throw) type cr ." STOPPED: " woke off me .block ." -_-;;; while in state: " .state then } ;
 [else]
     : acts  each> { act } ;
 [then]
