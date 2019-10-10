@@ -134,6 +134,7 @@ define-tool Mapster [if]
                 swap 1i #4 (h.0) s[ bl +c 1i #4 (h.0) +s ]s text
         ;
         :logic
+            repl @ ?exit
             lb interact? if  lay  ;then
             rb interact? if  that   ;then
         ;
@@ -146,6 +147,7 @@ define-tool Mapster [if]
             layer >tileset @> handle @ blit
         ;
         :logic
+            repl @ ?exit
             lb interact? if  pick  ;then
         ;
     drop
@@ -161,6 +163,7 @@ define-tool Mapster [if]
         ;
         :logic
             mark                                    \ just constantly mark the tileset as modified.
+            repl @ ?exit
             lb interact? if  paint    ;then
             rb interact? if  eyedrop  ;then
         ;
@@ -181,6 +184,7 @@ define-tool Mapster [if]
             outline
         ;
         :logic
+            repl @ ?exit
             lb interact? if  crayon  ;then
             rb interact? if  crayon  ;then
         ;

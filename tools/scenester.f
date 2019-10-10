@@ -45,11 +45,16 @@ define-tool Scenester [if]
     : drag  draggee if  mdelt draggee { x 2+! } then ;
     : ?drop  draggee if  0 to draggee  x 2@ 2pfloor x 2! then ;
     
-    : load  ( scene -- )  \ not to be used to change the current slew.  use SWITCHTO for that.
+    
+
+    : load-scene  ( scene -- )  \ not to be used to change the current slew.  use SWITCHTO for that.
         dup curScene >!
         dup >slew @ ?dup if block switchto then
         stage copy
     ;
+    
+    : load  ( -- <scene> )
+        scene ($) load-scene ;
 
     : save-scene ( -- <name> )
         >in @ >r scene (?$) ?dup 0 = if
@@ -66,12 +71,12 @@ define-tool Scenester [if]
 
     : draw-scene-name
         curScene @ -exit
-        unmount
-        s" Current Scene: "  curScene @> block>name strjoin
-            2dup default-font stringwh 8 8 2+ | h w c str |
-        default-font font>
-        displayw w - 24 at   w h black rectf  4 4 +at  str c white text
-        mount
+        s" Current Scene: "  curScene @> block>name strjoin rtype
+    ;
+    
+    : draw-mouse-coords
+        s" Mouse (game): " s[ maus scrollx 2@ 2+ swap 1i (.) +s bl +c 1i (.) +s ]s rtype
+        s" Mouse (scene): " s[ maus scrollx 2@ 2+ stage main-bounds xy@ 2- swap 1i (.) +s bl +c 1i (.) +s ]s rtype
     ;
     
     : update-scenes
@@ -107,7 +112,7 @@ define-tool Scenester [if]
         (pump)
 \         (step)
         curSlew @ if curSlew @> switchto then
-        stage curScene @> <> if  curScene @> load  then 
+        stage curScene @> <> if  curScene @> load-scene  then 
         
         tool-options to scene-options
         show>
@@ -120,9 +125,14 @@ define-tool Scenester [if]
             \ draw highlight on current actor (me)
             x 2@ ibx 2@ 2+ scrolled at  ibw 2@ black rect
             -1 -1 +at ibw 2@ 2 2 2+ white rect
-                        
-            ?draw-stage-name
+            
+            \ draw main-bounds of the stage
+            stage main-bounds xy@ scrolled at
+            stage main-bounds wh@ red rect
+            
+            draw-stage-name
             draw-scene-name
+            draw-mouse-coords
             
             controls
             

@@ -157,7 +157,7 @@ blockstruct
     record scroll
     record res
     record main-bounds      ( x, y, w, h )
-    record >slew  \ used to associate a slew in Scenester during save
+    cell field >slew  \ used to associate a slew in Scenester during save
 constant /sceneheader
 #512
     /layer field layer1 
@@ -204,7 +204,7 @@ blockstruct
     actorvar hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solidity and interaction hitboxes)
 constant simplestruct      \ for particles and environments
 
-#256
+#256  dup /simple
     actorvar rolename #12 +  \ effectively 16 bytes
     actorvar attr    \ attribute flags
     actorvar ctype   \ collision flags
@@ -734,15 +734,23 @@ defer resume
 
 : asdf  quit ;
 
-: ?draw-stage-name
+: rtype  ( adr c -- )
     [dev] [if]
         unmount
-        s" Stage: " stage block>name strjoin
-            2dup default-font stringwh 8 8 2+ | h w c str |
-        default-font font>
-        displayw w - 0 at   w h black rectf  4 4 +at  str c white text
+        2dup default-font stringwh 8 8 2+ | h w c str |
+            default-font font>
+            displayw w - peny @ at   w h black rectf  4 4 +at  str c white text
+            0 16 +at
         mount
-    [then]
+    [else]
+        2drop
+    [then]    
+;
+
+
+: draw-stage-name
+    0 0 at
+    s" Stage: " stage block>name strjoin rtype
 ;
 
 : quit
@@ -764,7 +772,7 @@ defer resume
             stage acts
             stage detects
         then
-        ?draw-stage-name
+        draw-stage-name
 ;
 
 : presave  me (me) >!  this (this) >!  stage (stage) >! ;
@@ -805,7 +813,7 @@ defer resume
 
 : toolVocab  tool @> vocab ;
 
-: contextualize  only forth also Gamester also  toolVocab ccount evaluate  definitions ;
+: contextualize  only forth also Gamester   tool @ if also toolVocab ccount evaluate then   definitions ;
 
 :make resume ( -- )
     lasttool @ if lasttool @ tool ! then 
