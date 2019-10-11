@@ -2,7 +2,7 @@ define-tool Scenester [if]
     depend prg/gamester/apptools.f
 
     toolstruct
-        cell toolfield curScene   \ scene we continually save to
+        cell toolfield curScene
         cell toolfield curSlew    \ for saving/restoring
         cell toolfield curLayer
     drop
@@ -68,6 +68,8 @@ define-tool Scenester [if]
     ;
     
     : save  stage curScene @> copy  cr ." Saved current scene."  save ;
+    
+    : rename  curScene @> named ;
 
     : draw-scene-name
         curScene @ -exit

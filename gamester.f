@@ -204,7 +204,7 @@ blockstruct
     actorvar hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solidity and interaction hitboxes)
 constant simplestruct      \ for particles and environments
 
-#256  dup /simple
+#256  dup constant /simple
     actorvar rolename #12 +  \ effectively 16 bytes
     actorvar attr    \ attribute flags
     actorvar ctype   \ collision flags
@@ -645,19 +645,22 @@ default-scene-options value scene-options
 : :overlay  ( options n -- <code> ; ) cells + :noname swap ! ;
 : overlay  ( n -- )  cells scene-options + @ execute ;
 
+: draw-scene-layer  ( n scene -- ) >r
+    dup
+        r@ scroll 2@ r@ main-bounds xy@ 2max r@ main-bounds xy2@ viewwh 2- 2min 2dup r@ scroll 2!
+        rot /layer * r@ layer1 + draw-layer
+        overlay
+r> drop ;
+
 : draw-scene ( scene - )
     me { >r
     r@ res 2@ or 0 = if viewwh r@ res 2! then
     r@ res 2@ resolution
-    r@ scroll 2@ r@ layer1 draw-layer
-    0 overlay
-    r@ scroll 2@ r@ layer2 draw-layer
-    1 overlay
-        r@ draws  \ temporary
-    r@ scroll 2@ r@ layer3 draw-layer
-    2 overlay
-    r@ scroll 2@ r@ layer4 draw-layer
-    3 overlay
+    0 r@ draw-scene-layer
+    1 r@ draw-scene-layer
+    r@ draws  \ temporary
+    2 r@ draw-scene-layer
+    3 r@ draw-scene-layer
     r> drop }
 ;
 
