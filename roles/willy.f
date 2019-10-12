@@ -11,7 +11,7 @@ define-role willy willying
     <1> kstate if  $02 plot  then
     <2> kstate if  $31 plot  then
 ;
-state: willy state1
+state: state1 willy
     paint
     0 rate !
     <left> kstate if  -2 x +!  0.25 rate !  then
@@ -20,4 +20,4 @@ state: willy state1
     <down> kstate if   2 y +!  0.25 rate !  then
     x 2@ viewwh 2 2 2/ 2- camera @> { x 2! }
 ;
-action: willy start  1 0 animate state1 ;
+action: start willy  1 0 animate state1 ;

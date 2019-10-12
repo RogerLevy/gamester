@@ -510,15 +510,13 @@ constant /pic
     does>  woke on @ dup state# ! runvec
     [dev] [if] noop [then] \ thwart tail-call optimzation
 ;
-: action: ( - <role> <name> ...code... ; ) ( ... - ... ) 
-    role ($)
-        >in @ ?action >in !
-        vtable @ ' >body @ + :noname swap !  
+: action: ( - <name> <role> ...code... ; ) ( ... - ... ) 
+    >in @ ?action >in !
+    ' >body @ role ($) vtable @ + :noname swap !  
 ;   
 : state:  ( - <role> <name> ...code... ; ) ( - )
-    role ($)
-        >in @ >r ?state   r> >in ! 
-        vtable @ ' >body @ + :noname swap ! 
+    >in @ ?state >in !
+    ' >body @ role ($) vtable @ + :noname swap !  
 ;
 : load-role  ( role - )
     >r
