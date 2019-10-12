@@ -415,7 +415,7 @@ constant /pic
 
 ( --== Tilemap stuff ==-- )
 
-: adr  ( col row adr - adr )
+: tile  ( col row adr - adr )
     >r 2pfloor  512 * + cells r> + ;
 
 : draw-tilemap  ( adr pic - )

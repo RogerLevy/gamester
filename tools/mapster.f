@@ -63,9 +63,9 @@ define-tool Mapster [if]
     ;    
     : box  x 2@   w 2@ sx 2@ 2*   aabb 1 1 2- ;
     : colrow  scrollx 2@ 2+ 16 16 2/ ;
-    : (adr)  snapped> mapa @> { maus x 2@ 2- sx 2@ 2/ colrow tilebuf adr } ;
-    : that   (adr) @ curTile ! ;
-    : lay  curTile @ (adr) ! ;
+    : (tile)  snapped> mapa @> { maus x 2@ 2- sx 2@ 2/ colrow tilebuf tile } ;
+    : that   (tile) @ curTile ! ;
+    : lay  curTile @ (tile) ! ;
     : mpos  maus x 2@ 2- sx 2@ 2/ ;
     : pick   mpos  16 16 2/ 2pfloor 16 * + curTile ! ;
     : crayon  curColor palbmp mpos   w 2@  palbmp bmpwh  2/  2/   2i  al_get_pixel ;
@@ -83,14 +83,14 @@ define-tool Mapster [if]
     ;
     : undo
         tsbmp -bmp  tspic load-pic  
-        
         wipe
     ;
 
 
     ( --== Commandline ==-- )
     
-    : load  ( scene - )
+    : load  ( - <scene> )
+        scene ($) 
         gui res 2@ 2>r
         gui copy
         gui layer1 layers /layer 4 * move
@@ -108,7 +108,7 @@ define-tool Mapster [if]
     : fillscr
         layer viewport h@ 16 / pfloor for
             layer viewport w@ 16 / pfloor for
-                curTile @ i j 0 0 colrow 2+ tilebuf adr !
+                curTile @ i j 0 0 colrow 2+ tilebuf tile !
             loop
         loop
     ;

@@ -23,7 +23,7 @@ define collisioning
     : tileprops@   ( tilespec -- flags )
         1i $ffff and tileprops + c@ ;
 
-    : map@  ( col row - tile )  map adr @ ;
+    : map@  ( col row - tile )  map tile @ ;
 
     : cel? BIT_CEL and ; \ ' ceiling '
     : flr? BIT_FLR and ; \ ' floor '
@@ -83,7 +83,7 @@ common also collisioning
 : each-tile>  ( tilemap -- <code> ) ( ... -- ... )  \ address is in A; you're in charge of incrementing
     r> (code) >r to (code)
     y @ ibh @ + 1 - gap / pfloor 1 +  y @ gap / pfloor do
-        x @ gap / pfloor  i  third adr a!
+        x @ gap / pfloor  i  third tile a!
         x @ ibw @ + 1 - gap / pfloor 1 +   x @ gap / pfloor do
             (code) call
         loop
