@@ -113,6 +113,8 @@
     s" tool" tool @> moduleType cplace
     scene one
         dup init-scene
+        >in @ over named >in !
+        dup tool @> chain
         >toolScene >!
     <word> toolSource cplace
     tool @> named
