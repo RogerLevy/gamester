@@ -645,9 +645,13 @@ default-scene-options value scene-options
 : :overlay  ( options n -- <code> ; ) cells + :noname swap ! ;
 : overlay  ( n -- )  cells scene-options + @ execute ;
 
+: limit-scene-scroll  ( scene -- ) >r
+    r@ scroll 2@ r@ main-bounds xy@ 2max r@ main-bounds xy2@ viewwh 2- 2min r@ scroll 2!
+r> drop ;
+
 : draw-scene-layer  ( n scene -- ) >r
     dup
-        r@ scroll 2@ r@ main-bounds xy@ 2max r@ main-bounds xy2@ viewwh 2- 2min 2dup r@ scroll 2!
+        r@ scroll 2@ 
         rot /layer * r@ layer1 + draw-layer
         overlay
 r> drop ;
@@ -769,7 +773,8 @@ defer resume
             <`> pressed if resume ;then
             <s> pressed ctrl? and if save then 
         [then]
-        black backdrop        
+        black backdrop
+        stage limit-scene-scroll
         stage draw-scene
         paused @ not if
             stage acts
