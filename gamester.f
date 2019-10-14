@@ -116,18 +116,19 @@ drop #128 constant modulestruct
 : blocks  #2 rshift ;
 : block+  #1024 + ;
 : free?  c@ 0 = ;
-: enabled?  c@ 0 <> ;
 : locked?  lock @ ;
 : claim  on ;
 : >nfa   ;
 : >!  swap block> swap ! ;
 : @>  @ [dev] [if] dup 0 = abort" Invalid reference!" [then] block ;
+: ?@>  @ dup if block then ;
 : delete   dup locked? if drop ;then begin dup off >chain @ ?dup while block repeat ;
 : chain  ( src dest - ) begin dup >chain @ dup while nip repeat drop >chain >! ;
 : copy  #16 #16 2+ 1 blocks #16 - move ;
 : ?null  ?dup 0 = if s" Not a block." r> drop then ;
-: block>name  ?null dup @ #-1 = over c@ 0= or if #8 (h.0) else >nfa ccount then ;
+: block>name  ?null dup block> 1i #4 (h.0) s" /" strjoin 2>r dup @ #-1 <> if >nfa ccount 2r> 2swap strjoin else drop 2r> then ;
 : .block  block>name type space ;
+: .name  >nfa ccount type space ;
 
 ( --== Structures ==-- )
 
@@ -180,7 +181,7 @@ create mestk  0 , 16 cells allot
 
 blockstruct
     actorvar zorder
-    actorvar scenebits  \ defines which scenes this actor will appear in
+    actorvar `````
     actorvar dead    \ if on, will be deleted at end of frame.
     actorvar x
     actorvar y
@@ -201,7 +202,7 @@ blockstruct
     actorvar animctr
     actorvar rate    \ animation speed
     actorvar woke    \ if woke is off, state isn't executed.
-    actorvar hid     \ if hid is off and pic# is 0, a rectangle is drawn (using the solidity and interaction hitboxes)
+    actorvar hid
 constant simplestruct      \ for particles and environments
 
 #256  dup constant /simple
@@ -217,7 +218,8 @@ constant simplestruct      \ for particles and environments
     actorvar sby
     actorvar sbw
     actorvar sbh
-    actorvar ref1  actorvar ref2  actorvar ref3  actorvar ref4  actorvar ref5  actorvar ref6  actorvar ref7  actorvar ref8
+    actorvar important  \ actor won't be disabled if left outside of a jumpcut
+    actorvar disabled     \ disabled; no display, logic, or collision detection.
 drop #512 constant commonvars
 
 \ the remaining space is considered "volatile" and this is where roles should define their vars
@@ -304,7 +306,7 @@ modulestruct constant rolestruct
 ;
 : each>  ( bank - )  ( block - )
     r>  swap first@ 1023 for
-        dup enabled? if
+        dup free? not if
             2dup 2>r swap call 2r>
         then
         block+        
@@ -393,7 +395,7 @@ constant /pic
 
 : load-pic  ( pic - )
     >r
-        r@ path ccount ?datapath echo ['] loadbmp softcatch  ." pic( " r@ .block ." ) "
+        r@ path ccount ?datapath echo ['] loadbmp softcatch  ."  pic( " r@ .name ." ) "
         ?dup if r@ handle ! then
     r> drop
 ;
@@ -450,14 +452,18 @@ constant /pic
 ;
 
 : role!  ( role -- )
-    dup role ! >nfa ccount rolename cplace ;
+    dup >role >! >nfa ccount rolename cplace ;
 
 
 ( --== Slew stuff ==-- )
 
 0 value xt
 : announce  ( xt slew )
-    swap to xt each> { >role @ if xt execute then } ;
+    swap to xt each> {
+        disabled @ not if
+            >role @ if xt execute then
+        then
+    } ;
 
 : in-bank?  ( val bank -- flag )  - dup /bank < swap 0 >= and ;
 
@@ -474,8 +480,12 @@ constant /pic
 ;
 
 ( --== Role stuff ==-- )
-
-: runvec  ( ... ofs - ... )   >role @> vtable @ + @ execute ;
+\ 
+\ [dev] [if]
+\ : runvec  ( ... ofs - ... )   ?dup -exit  >role @> vtable @ + @ ['] execute catch ?dup if me .block throw then ;
+\ [else]
+: runvec  ( ... ofs - ... )   ?dup -exit  >role @> vtable @ + @ execute ;
+\ [then]
 : already  >in @ >r defined r> >in ! if >body cell+ @ $01234567 = ;then  drop false ;
 : (create)
     get-order get-current
@@ -494,8 +504,10 @@ constant /pic
     else
         r> >in !  (create) @ , $01234567 , 
     then 
-    does>  @ runvec
-    [dev] [if] noop [then] \ thwart tail-call optimzation
+    does>
+        >role @ 0 = if drop ;then \ TODO: implement fallbacks
+        @ runvec
+        [dev] [if] noop [then] \ thwart tail-call optimzation
 ;
 : ?state
     already ?exit
@@ -507,8 +519,10 @@ constant /pic
     else
         r> >in !  (create) @ , $01234567 , 
     then 
-    does>  woke on @ dup state# ! runvec
-    [dev] [if] noop [then] \ thwart tail-call optimzation
+    does>
+        >role @ 0 = if drop ;then \ TODO: implement fallbacks
+        woke on @ dup state# ! runvec
+        [dev] [if] noop [then] \ thwart tail-call optimzation
 ;
 : action: ( - <name> <role> ...code... ; ) ( ... - ... ) 
     >in @ ?action >in !
@@ -545,13 +559,15 @@ constant /pic
     0 0 512 16 * dup r@ main-bounds xywh!
     r> drop 
 ;
-: filter-slew  ( src-scene slew - )  \ removes excluded actors 
-    | b s |
-    b each> {
-    scenebits @ s scenemask @ and 0 = if
-        me delete
-    then }
-;
+
+\ : filter-slew  ( src-scene slew - )  \ removes excluded actors 
+\     | b s |
+\     b each> {
+\     scenebits @ s scenemask @ and 0 = if
+\         me delete
+\     then }
+\ ;
+
 : limit-scroll  ( scrollx scrolly layer - scrollx scrolly )
     >r
     r@ bounds xy@ 2max
@@ -580,10 +596,6 @@ constant /pic
     /bank move
 ;
 
-\ : load-scene  ( scene -- )
-\     stage clone
-\ ;
-
 ( --== Actor stuff ==-- )
 
 : actor[]  ( n slew -- actor )  swap 1 + blocks + ;
@@ -606,6 +618,12 @@ create colors  ' blue , ' green , ' red , ' orange , ' yellow , ' magenta , ' cy
 : placeholder  ( - )
     x 2@ ibx 2@ 2+ scrolled at  me id @ ?color 0.75 alpha  ibw 2@ rectf
     x 2@ sbx 2@ 2+ scrolled at  red  sbw 2@ rect
+    [dev] [if]
+        unmount
+        x 2@ scrolled globalscale dup 2* mountxy 2+ at
+        >role ?@> ?dup if  default-font font>  >nfa ccount 2dup fnt @ stringwh black rectf white text  then
+        mount
+    [then]
 ;
 
 defer draw
@@ -630,10 +648,26 @@ create drawlist 1023 cells /allot
 : zorder@  { zorder @ } ;
 
 ?action physics  ( -- ) 
-: act   >role @ -exit  woke @ -exit  state# @ runvec  dead @ ?exit  physics ;
+
+: act   ( -- )
+    >role @ -exit  state# @ runvec  dead @ ?exit  physics ;
+
+: ?act   disabled @ ?exit  woke @ -exit  act ;
+: ?draw  disabled @ ?exit  hid @ ?exit  draw ;
+
+0 value 'code
+: zsorted>  ( slew -- <code> )
+    r> to 'code  gathered 2dup ['] zorder@ rsort swap a!> for @+ { 'code call } loop ;
+
+[defined] dev [if]
+    : (stop)  woke off cr ." STOPPED: " me .block ." -_-;;; while in state: " .state ;
+    : acts  zsorted> ['] ?act catch ?dup if cr (throw) type (stop) then ;
+[else]
+    : acts  zsorted> ?act ;
+[then]
 
 : draws  ( slew - )
-    gathered 2dup ['] zorder@ rsort swap a!> for @+ { draw } loop ;
+    zsorted> ?draw ;
 
 : sweep  ( slew - )
     each> { dead @ if me delete then } ; 
@@ -666,14 +700,6 @@ r> drop ;
     r> drop }
 ;
 
-[defined] dev [if]
-    : disable  woke off cr ." STOPPED: " me .block ." -_-;;; while in state: " .state ;
-    : acts  each> { ['] act catch ?dup if cr (throw) type disable then } ;
-[else]
-    : acts  each> { act } ;
-[then]
-
-
 : aabb  ( x y w h - x1 y1 x2 y2 )  2over 2+ ;
 
 : overlap? ( xyxy xyxy - flag )
@@ -696,7 +722,7 @@ r> drop ;
         cmask @ ctype @ or if
             1024 n do  \ only need to check the ones after this one
                 i slew actor[] to you
-                you enabled? if
+                you free? not  you { disabled @ not }  and if
                     you { cmask @ } ctype @ and to hitter?
                     you { ctype @ } cmask @ and to hittee?
                     hitter? hittee? or if
