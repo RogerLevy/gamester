@@ -37,6 +37,7 @@ common
 0 value installing?                 \ true when installing a module or tool
 0 value newBlockFile?               \ true when initializing a new block file 
 defer save-assets  ( -- )  :make save-assets ;
+create mestk  0 , 16 cells allot
 
 
 ( --== Utilities ==-- )
@@ -182,61 +183,6 @@ layer-template to this
     0 0 8192 8192 this bounds 4!
     0 0 viewwh this viewport 4!
 
-create mestk  0 , 16 cells allot
-: actorvar  ( offset -- <name> offset+cell )  cell field  <fixed  does> datatype.offset @ me + ;
-: alias  ( - <old> <new> ) ' >body @ field drop  does> @ me + ;
-
-\ SET works with these.
-
-struct: %simple  \ for particles and environments
-    %block embed blockheader
-    actorvar zorder  <fixed  
-    cell+
-    actorvar dead    <flag   \ if on, will be deleted at end of frame.
-    actorvar x       <fixed  
-    actorvar y       <fixed  
-    actorvar vx      <fixed  
-    actorvar vy      <fixed  
-    actorvar tintr   <fixed  
-    actorvar tintg   <fixed  
-    actorvar tintb   <fixed  
-    actorvar tinta   <fixed  
-    actorvar sx      <fixed  
-    actorvar sy      <fixed  
-    actorvar rtn     <fixed  
-    actorvar >role   <fixed  
-    actorvar state#  <fixed  
-    actorvar >pic    <fixed  
-    actorvar sub#    <fixed  
-    actorvar anim#   <fixed  
-    actorvar animctr <fixed  
-    actorvar rate    <fixed  \ animation speed
-    actorvar woke    <flag   \ if woke is off, state isn't executed.
-    actorvar hid     <flag   
-drop #256 ;struct
-
-struct: %common  
-    %simple embed commonheader
-    actorvar rolename #12 +  <cstring  \ effectively 16 bytes
-    actorvar attr            <hex      \ attribute flags
-    actorvar ctype           <hex      \ collision flags
-    actorvar cmask           <hex      \ collision mask
-    actorvar ibx             <fixed    \ interaction hitbox
-    actorvar iby             <fixed    
-    actorvar ibw             <fixed    
-    actorvar ibh             <fixed    
-    actorvar sbx             <fixed    \ solid hitbox
-    actorvar sby             <fixed    
-    actorvar sbw             <fixed    
-    actorvar sbh             <fixed    
-    actorvar important       <flag     \ actor won't be disabled if left outside of a jumpcut
-    actorvar disabled        <flag     \ disabled; no display, logic, or collision detection.
-drop #512 ;struct
-
-\ the remaining space is considered "volatile" and this is where roles should define their vars
-: volatilevars  %common #768 ;
-
-
 : system  0 block ;     \ kludge; redefined in more logical way below
 
 : simple-global  field does> datatype.offset @ system + ;
@@ -249,7 +195,6 @@ struct: %globals
     cell simple-global globalOffset  <int
     cell simple-global nextid  <fixed
 drop #128 ;struct
-
 
 struct: %role  %module embed moduleheader
 ;struct
@@ -400,6 +345,59 @@ cell global (me)         <fixed
 cell global (this)       <fixed  
 cell global paused       <flag   \ disables actor logic
 cell global (stage)      <fixed  \ for preserving in QUIT and RUN
+
+
+( --== Actor vars ==-- )
+
+: actorvar  ( offset -- <name> offset+cell )  cell field  <fixed  does> datatype.offset @ me + ;
+
+struct: %simple  \ for particles and environments
+    %block embed blockheader
+    actorvar zorder  <fixed  
+    cell+
+    actorvar dead    <flag   \ if on, will be deleted at end of frame.
+    actorvar x       <fixed  
+    actorvar y       <fixed  
+    actorvar vx      <fixed  
+    actorvar vy      <fixed  
+    actorvar tintr   <fixed  
+    actorvar tintg   <fixed  
+    actorvar tintb   <fixed  
+    actorvar tinta   <fixed  
+    actorvar sx      <fixed  
+    actorvar sy      <fixed  
+    actorvar rtn     <fixed  
+    actorvar >role   <fixed  
+    actorvar state#  <fixed  
+    actorvar >pic    <fixed  
+    actorvar sub#    <fixed  
+    actorvar anim#   <fixed  
+    actorvar animctr <fixed  
+    actorvar rate    <fixed  \ animation speed
+    actorvar woke    <flag   \ if woke is off, state isn't executed.
+    actorvar hid     <flag   
+drop #256 ;struct
+
+struct: %common  
+    %simple embed commonheader
+    actorvar rolename #12 +  <cstring  \ effectively 16 bytes
+    actorvar attr            <hex      \ attribute flags
+    actorvar ctype           <hex      \ collision flags
+    actorvar cmask           <hex      \ collision mask
+    actorvar ibx             <fixed    \ interaction hitbox
+    actorvar iby             <fixed    
+    actorvar ibw             <fixed    
+    actorvar ibh             <fixed    
+    actorvar sbx             <fixed    \ solid hitbox
+    actorvar sby             <fixed    
+    actorvar sbw             <fixed    
+    actorvar sbh             <fixed    
+    actorvar important       <flag     \ actor won't be disabled if left outside of a jumpcut
+    actorvar disabled        <flag     \ disabled; no display, logic, or collision detection.
+drop #512 ;struct
+
+\ the remaining space is considered "volatile" and this is where roles should define their vars
+: volatilevars  %common #768 ;
 
 
 ( --== Pic stuff ==-- )
