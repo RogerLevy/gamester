@@ -1,5 +1,4 @@
 ( --== application-specific common stuff ==-- )
 
-globals
-    cell global camera
-drop
+
+cell global camera

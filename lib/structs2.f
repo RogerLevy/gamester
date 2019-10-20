@@ -1,3 +1,5 @@
+0 value lastfield
+
 also venery
     
     struct %datatype
@@ -20,9 +22,9 @@ also venery
     
     : (.field)  ( adr size - )
         bounds ?do i @ dup if h. else i. then cell +loop ;
-    
-    : >lastfield  ( struct -- field )
-        node.last @ ;
+            
+    : >struct  ( field -- struct )
+        node.parent @ ;
     
     : fieldtype:  ( id count inspector -- <name> ) ( struct offset -- struct offset )
         create
@@ -30,15 +32,15 @@ also venery
             r@ datatype.inspector !
             drop @ r@ datatype.typeid !
             r> drop
-        does> ( struct offset fieldtype ) third >lastfield datatype.type ! ;
+        does> ( struct offset fieldtype ) lastfield datatype.type ! ;
     
     s" FIXP" ' (.field) fieldtype: <default
         
-    : (create-field)  create does> [ 0 datatype.offset ]# + @ + ;
+    : (create-field)  create here to lastfield does> [ 0 datatype.offset ]# + @ + ;
         
     : create-field  ( struct offset size - <name> struct offset+size )  ( adr - adr+n )
         0 locals| f size ofs struct |
-        (create-field)
+        (create-field) 
             *datatype to f
             f struct push
             ofs f datatype.offset !

@@ -27,8 +27,7 @@ define Gamester
 only forth definitions
 : common  only forth also Gamester definitions ;
 common
-: common-create  get-order get-current  common  set-current set-order ;
-
+: common-create  get-order get-current  common create  set-current set-order ;
 
 ( --== Variables ==-- )
 
@@ -91,9 +90,9 @@ defer save-assets  ( -- )  :make save-assets ;
 : offset+   ' >body @ + ;
 : extend   dup sizeof ;
 
-( --== block stuff ==-- )
+( --== Block stuff ==-- )
 
-: inspect-typeid  type ;
+: inspect-typeid  ( adr size -- ) over @ if type else 2drop ." null" then space ;
 s" BTYP" ' inspect-typeid fieldtype: <typeid
 
 struct: %block
@@ -107,7 +106,7 @@ drop #32 ;struct
 struct: %bank   
     %block embed blockheader
     cell field cursor  <fixed
-drop #128 ;struct
+drop #64 ;struct
 
 struct: %module
     %block embed blockheader
@@ -239,43 +238,42 @@ drop #512 ;struct
 
 
 : system  0 block ;     \ kludge; redefined in more logical way below
-: global  field does> datatype.offset @ system + ;
-: \global  +  0 parse 2drop ;
+
+: simple-global  field does> datatype.offset @ system + ;
 
 struct: %globals  
-    %block embed blockheader
-    cell global >stage       <fixed  \ current slew (block)
-    cell global tool         <fixed  \ current tool  (block)
-    cell global nextid       <fixed  \ next global ID (incremented by ONE)
-    cell global lasttool     <fixed  \ last tool that was RUN (block#)
-    cell global actionOffset <fixed  
-    cell global stateOffset  <fixed  
-    cell global (me)         <fixed  
-    cell global (this)       <fixed  
-    cell global paused       <flag   \ disables actor logic
-    cell global (stage)      <fixed  \ for preserving in QUIT and RUN
+    %bank embed bankheader
+    cell simple-global actionOffset <int
+    cell simple-global stateOffset  <int
+    cell simple-global globalOffset  <int
+    cell simple-global globalOffset  <int
+    cell simple-global nextid  <fixed
 drop #128 ;struct
 
-: globals  %globals extend ;
-
-: toolfield  ( size -- <name> )
-    field does> @ tool @> + ;
-
-struct: %tool  
-    %module embed moduleheader
-    #32 toolfield starter  <cstring  
-    #32 toolfield resumer  <cstring  
-    cell toolfield >toolScene  <fixed
-drop #256 ;struct
 
 struct: %role  %module embed moduleheader
 ;struct
 
 
-( --== bank stuff ==-- )
+struct: %bank  
+    %block embed blockheader
+    cell field defaultType   <typeid
+drop #128 ;struct
+
+( --== Bank stuff ==-- )
+
+: named  ( block - <name> )
+    <word> rot >nfa cplace ;
+
+: init-bank  ( n -- <name> )
+    >in @ >r
+    1024 * block dup named
+    s" $$$$" drop @ swap defaultType !
+    r> >in !
+;
 
 : >bank  ( block - bank )    block>  dup 1024 mod -  block ;
-: bank   create   ( start: ) 1024 * ,  does> @ block ;
+: bank   dup init-bank  create   ( start: ) 1024 * ,  does> @ block ;
 : first@  ( bank - adr ) block+ ;
 : current@  ( bank - adr ) dup cursor @ blocks + ;
 : not0  dup ?exit 1 + ;
@@ -285,13 +283,12 @@ struct: %role  %module embed moduleheader
     1023 for
         dup current@ free? if
             1 nextid +!
-            current@ dup 1 blocks erase  dup claim  nextid @ over id !
+            dup >r current@ dup 1 blocks erase  dup claim  nextid @ over id !
+            r> defaultType @ over typeid !
         unloop ;then
     +cursor
     loop true abort" No more left!"
 ;
-: named  ( block - <name> )
-    <word> rot >nfa cplace ;
 
 : (?$)  ( bank - <name> adr|0 )  
     first@
@@ -338,13 +335,13 @@ struct: %role  %module embed moduleheader
 4 bank template  \ a place to store actors for instantiating multiple times in different stages
 5 bank role      \ like classes, but just for actors
 6 bank gui       \ slew for the current tool to use (cleared by RUN)
-7 bank env       \ offset constants for actions & states, and other miscellanea
+7 bank env       \ offset for actions & states and misc. environment variables
 8 bank playfield \ slew; default for game actors 
 9 bank table     \ for general data table use
 
-( --== Constant storage ==-- )
+( --== Environment variables ==-- )
 
-struct: %constant
+struct: %env
     %block embed blockheader
     record kind
     record data
@@ -375,6 +372,35 @@ struct: %constant
         then
     r> drop
 ;
+
+
+( --== Smart globals ==-- )
+
+: global  ( size -- <name> )
+    >in @ >r 
+    s" global" (env) dup @ 0 = if
+        cell globalOffset +!
+        globalOffset @ ?overflow drop
+        globalOffset @ swap ( env ) !
+        globalOffset @
+    else
+        @ 
+    then
+        r> >in !
+        ( size offset ) 
+        %globals -rot swap create-field 2drop
+    does>
+        datatype.offset @ system +
+;
+
+cell global >stage       <fixed  \ current slew (block)
+cell global tool         <fixed  \ current tool  (block)
+cell global lasttool     <fixed  \ last tool that was RUN (block#)
+cell global (me)         <fixed  
+cell global (this)       <fixed  
+cell global paused       <flag   \ disables actor logic
+cell global (stage)      <fixed  \ for preserving in QUIT and RUN
+
 
 ( --== Pic stuff ==-- )
 
@@ -483,12 +509,6 @@ drop #384
 
 : already  >in @ >r defined r> >in ! if >body cell+ @ $01234567 = ;then  drop false ;
 
-: (create)
-    get-order get-current
-    common
-    create
-    set-current set-order
-;
 
 : ?action
     already ?exit
@@ -496,36 +516,41 @@ drop #384
     s" action" (env) dup @ 0 = if
         cell actionOffset +! 
         actionOffset @ swap ( env ) !  
-        r> >in !  (create) actionOffset @ , $01234567 ,
+        r> >in !  common-create actionOffset @ , $01234567 ,
     else
-        r> >in !  (create) @ , $01234567 , 
+        r> >in !  common-create @ , $01234567 , 
     then 
     does>
         >role @ 0 = if drop ;then \ TODO: implement fallbacks
         @ runvec
 ;
+
 : ?state
     already ?exit
     >in @ >r 
     s" state" (env) dup @ 0 = if
         cell stateOffset +! 
         stateOffset @ swap ( env ) !  
-        r> >in !  (create) stateOffset @ , $01234567 ,
+        r> >in !  common-create stateOffset @ 256 cells + , $01234567 ,
     else
-        r> >in !  (create) @ , $01234567 , 
+        r> >in !  common-create @ 256 cells + , $01234567 , 
     then 
     does>
         >role @ 0 = if drop ;then \ TODO: implement fallbacks
-        woke on @ dup state# ! runvec
+        woke on
+        @ dup state# ! runvec
 ;
+
 : action: ( - <name> <role> ...code... ; ) ( ... - ... ) 
     >in @ ?action >in !
     ' >body @ role ($) vtable @ + :noname swap !  
-;   
+;
+
 : state:  ( - <role> <name> ...code... ; ) ( - )
     >in @ ?state >in !
-    ' >body @ role ($) vtable @ + :noname swap !  
+    ' >body @ role ($) vtable @ + :noname swap .s !  
 ;
+
 : load-role  ( role - )
     >r
         common
@@ -742,7 +767,17 @@ r> drop ;
 ;
 
 
-( --== Tools stuff pt 1 ==-- )
+( --== Tool stuff pt 1 ==-- )
+
+: toolfield  ( size -- <name> )
+    field does> @ tool @> + ;
+
+struct: %tool  
+    %module embed moduleheader
+    #32 toolfield starter  <cstring  
+    #32 toolfield resumer  <cstring  
+    cell toolfield >toolScene  <fixed
+drop #256 ;struct
 
 : toolSource  tool @> source ;
 
@@ -764,9 +799,9 @@ defer resume
 
 : load-pics    pic each> load-pic ;
 : load-roles   role each> load-role ;
-: load-systems system each>  false to installing? load-tool ;
+: load-modules system each>  false to installing?  load-tool ;
 : save-pics    pic each> dup modified @ if dup modified off save-pic else drop then ;
-: free-pics  pic each> handle @ -bmp ;
+: free-pics    pic each> handle @ -bmp ;
 
 : asdf  quit ;
 
@@ -828,7 +863,7 @@ defer resume
         s" depend " s[ project count +s s" shared.f" +s ]s ['] evaluate softcatch
     then
     load-roles 
-    load-systems 
+    load-modules 
     cr ." Gamester: Done! "
 ;
 
@@ -864,15 +899,15 @@ defer resume
 
 ( --== Modes ==-- )
 
-\ #16 global mode
-\ 
-\ : create-mode   create does> dup body> >name ccount mode cplace  @ execute ;
-\ 
-\ : mode:  ( -- <name> <code> ; )
-\     get-order get-current common 
-\     create-mode here 0 , :noname swap !
-\     set-current set-order
-\ ;
+#16 global mode
+ 
+: create-mode   create does> dup body> >name ccount mode cplace  @ execute ;
+
+: mode:  ( -- <name> <code> ; )
+    get-order get-current common 
+    create-mode here 0 , :noname swap !
+    set-current set-order
+;
 
 
 ( --== Lookup shorthands ==-- )
@@ -896,17 +931,17 @@ defer resume
 ( --== Development ==-- )
 
 : development
-\    tool @ if
+   tool @ if
         lasttool @ 0<> tool @ 0<> and if
             resume
         else
             quit tool @ lasttool !
         then
-        throw
-\    else
-\        mode find if execute else drop then
-\    then
+   else
+        quit  mode find if execute then
+   then
 ;
+
 
 ( ~~~~~~~~~~~~~~~~~~~~~~~~ )
 (        Includes          )
@@ -926,7 +961,7 @@ newBlockFile? [if]
     playfield >stage >!
     add-pic default prg/gamester/data/default.png  this lock on
     install prg/gamester/tools/mapster.f mapster
-    256 cells stateOffset !
+    %globals sizeof globalOffset !
 [then]
 
 cr .( PROJECT :::::::::::: ) project count type
