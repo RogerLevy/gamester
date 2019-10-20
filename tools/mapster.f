@@ -1,11 +1,9 @@
+depend prg/gamester/lib/apptools.f    
+define-tool Mapster [if]  
 
-define-tool Mapster [if]
-    
-    depend prg/gamester/apptools.f    
-    
-    toolstruct
+    %tool extend
         cell toolfield >palette         \ pic; block #
-        /layer 4 * toolfield layers
+        %layer sizeof 4 * toolfield layers
         cell toolfield curTile
         4 cells toolfield curColor      \ pen color
         cell toolfield tileseta
@@ -15,27 +13,27 @@ define-tool Mapster [if]
         cell toolfield palettea
         cell toolfield hilitea
         cell toolfield curLayer
-    drop
+    2drop
     
     volatilevars
         actorvar kind#
         actorvar w
         actorvar h
-    drop
-    
-    : @color  curColor fore 4 cells move ;
-    : layer  curLayer @ 4 mod /layer * layers + ;
+    2drop
 
-    0
+    : @color  curColor fore 4 cells move ;
+    : layer  curLayer @ 4 mod %layer sizeof * layers + ;
+
+    struct: %kind
         cell field 'draw
         cell field 'logic
-    constant /kind
+    ;struct
 
     create mapster-options 0 , 0 , 0 , 0 , 
 
     16 stack: kinds  16 cells /allot
     : kind:  ( - <name> adr )
-        kinds length constant  here dup kinds push /kind /allot ;
+        kinds length constant  here dup kinds push %kind struct, ;
 
     : kind  kind# @ kinds []@ ;
     : draw-kind  x 2@ at  kind 'draw @ execute ;
@@ -93,8 +91,8 @@ define-tool Mapster [if]
         scene ($) 
         gui res 2@ 2>r
         gui copy
-        gui layer1 layers /layer 4 * move
-        gui layer1 /layer 4 * erase
+        gui layer1 layers %layer sizeof 4 * move
+        gui layer1 %layer sizeof 4 * erase
         1 curLayer !
         gui res 2@ mapa @> { w 2! }
         2r@ or 0 = if
@@ -256,6 +254,7 @@ define-tool Mapster [if]
     
     
 [then]
+
 installing? [if]
     s" start-mapster" starter cplace
     s" resume-mapster" resumer cplace

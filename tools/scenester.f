@@ -1,15 +1,14 @@
+depend prg/gamester/lib/apptools.f
 define-tool Scenester [if]
-    depend prg/gamester/apptools.f
 
-    toolstruct
+    %tool extend
         cell toolfield curScene
         cell toolfield curSlew    \ for saving/restoring
         cell toolfield curLayer
-    drop
-    
+    2drop
     0 value draggee
 
-    : layer  curLayer @ 4 mod /layer * stage layer1 + ;
+    : layer  curLayer @ 4 mod %layer sizeof * stage layer1 + ;
     : scrollx  stage scroll ;
     : box  x 2@ ibx 2@ sx 2@ 2* 2+  ibw 2@ sx 2@ 2*   aabb 1 1 2- ;
     : maus  maus mountxy globalscale dup 2/ 2- ;

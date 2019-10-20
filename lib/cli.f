@@ -1,4 +1,4 @@
-
+: view   dup to this .fields ;
 : list  ( bank - )  each> cr .block ;
 : .paths ( bank - )  each> cr dup .block path ccount type ;
 

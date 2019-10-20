@@ -1,26 +1,22 @@
 also venery
     
-    struct %struct
-        %struct %node sembed struct>node
-        %struct svar struct.size
+    struct %datatype
+        %datatype %node sembed datatype>node
+        %datatype svar datatype.size
+        %datatype svar datatype.offset      
+        %datatype svar datatype.type        \ datatype
+        %datatype svar datatype.typeid      \ 4 chars
+        %datatype svar datatype.inspector   \ XT ( adr size -- )
+        %datatype svar datatype.embedder    \ datatype
 
-    struct %field
-        %field %node sembed field>node
-        %field svar field.offset
-        %field svar field.size
-        %field svar field.type
-
-    struct %fieldtype
-        %fieldtype svar typeid
-        %fieldtype svar 'inspector   ( field size -- )
-        %fieldtype svar embedder    \ struct
+    : *datatype  %datatype sizeof allotment dup /node ;
 
     : struct:  ( -- <name> struct offset )
-        create here %struct *struct /node 0 ;
+        create *datatype 0 ;
         
     : ;struct  ( struct offset -- )
-        swap 2dup struct.size @ < abort" Struct definition overflow."
-        struct.size ! ;
+        swap 2dup datatype.size @ < abort" Struct definition overflow."
+        datatype.size ! ;
     
     : (.field)  ( adr size - )
         bounds ?do i @ dup if h. else i. then cell +loop ;
@@ -29,21 +25,25 @@ also venery
         node.last @ ;
     
     : fieldtype:  ( id count inspector -- <name> ) ( struct offset -- struct offset )
-        create >r drop @ , r> ,
-        does> ( struct offset fieldtype ) third >lastfield field.type ! ;
+        create
+            *datatype >r
+            r@ datatype.inspector !
+            drop @ r@ datatype.typeid !
+            r> drop
+        does> ( struct offset fieldtype ) third >lastfield datatype.type ! ;
     
     s" FIXP" ' (.field) fieldtype: <default
         
-    : (create-field)  create does> [ 0 field.offset ]# + @ + ;
+    : (create-field)  create does> [ 0 datatype.offset ]# + @ + ;
         
     : create-field  ( struct offset size - <name> struct offset+size )  ( adr - adr+n )
         0 locals| f size ofs struct |
         (create-field)
-            %field *struct to f
-            f /node  f struct push
-            ofs f field.offset !
-            size f field.size !
-            size struct struct.size +!
+            *datatype to f
+            f struct push
+            ofs f datatype.offset !
+            size f datatype.size !
+            size struct datatype.size +!
         struct   ofs size +
         <default ;
         
@@ -58,7 +58,10 @@ previous
     cell sfield ;
 
 : sizeof  ( struct - size )
-    struct.size @ ;
+    datatype.size @ ;
+
+: sembed  ( struct size struct -- <name> )  ( adr -- adr+ofs )
+    dup >r sizeof create-field  r> third datatype.embedder ! ;
     
 : *struct  ( struct - adr )
     here swap sizeof /allot ;
@@ -73,17 +76,19 @@ previous
             ( field ) dup body> >name ccount type space
         bright
         
-        ( field ) dup embedder ?dup if
+        ( field ) dup datatype.embedder @ ?dup if
             ( adr field struct ) nip recurse drop
         else
-            2dup dup field.size @ swap field.type @ 'inspector @ execute        
+            2dup dup datatype.size @ swap datatype.type @ datatype.inspector @ execute        
         then
         
-        field.size @ +
+        datatype.size @ +
 ;
 
 : .fields ( adr struct - )
-    dup node.first @ field.offset @ u+  (.fields) drop ;
+    dup node.first @ datatype.offset @ u+  (.fields) drop ;
+
+
 
 : inspect-cstring drop ccount type ;
 : inspect-string  drop count type ;
@@ -99,7 +104,6 @@ s" ADDR" ' inspect-hex fieldtype: <adr
 s" ADDR" ' inspect-hex fieldtype: <addr
 s" FLOT" ' inspect-float fieldtype: <float
 s" CSTR" ' inspect-cstring fieldtype: <cstring
-\ s" WSTR" , inspect-wstring fieldtype: <wstring
 s" FLAG" ' inspect-flag fieldtype: <flag
 s" BODY" ' inspect-body fieldtype: <body
 s" XTXT" ' inspect-xt fieldtype: <xt
