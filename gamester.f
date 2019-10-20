@@ -104,11 +104,13 @@ struct: %block
     cell field lock    <flag
 drop #32 ;struct
 
-struct: %bank   drop %block sizeof
+struct: %bank   
+    %block embed blockheader
     cell field cursor  <fixed
 drop #128 ;struct
 
-struct: %module  drop %block sizeof
+struct: %module
+    %block embed blockheader
     record moduleType   <cstring
     record vocab        <cstring
     #60 field source    <cstring
@@ -138,7 +140,8 @@ drop #128 ;struct
 
 #1024 1024 * constant /bank
 
-struct: %asset  drop %block sizeof
+struct: %asset
+    %block embed blockheader
     #64 field path    <cstring
     record handle     <addr
     record modified   <flag
@@ -154,7 +157,8 @@ struct: %layer
     record viewport         <fixed  ( x, y, w, h ) 
 drop #128 ;struct
 
-struct: %sceneheader  drop %block sizeof
+struct: %sceneheader
+    %block embed blockheader
     record scenemask   <hex   \ bitmask that defines which actors will be copied when loading to this scene
     record bgm         <fixed \ ( TBD ) probably a general sound #, which can optionally stream a file
                        \ could add extra params like volume and pitch
@@ -164,8 +168,9 @@ struct: %sceneheader  drop %block sizeof
     cell field >slew   <fixed     \ used to associate a slew in Scenester during save
 ;struct
 
-struct: %scene drop
-    #512
+struct: %scene
+    %sceneheader embed sceneheader
+    drop #512
     %layer embed layer1 
     %layer embed layer2
     %layer embed layer3
@@ -184,7 +189,8 @@ create mestk  0 , 16 cells allot
 
 \ SET works with these.
 
-struct: %simple  drop %block sizeof  \ for particles and environments
+struct: %simple  \ for particles and environments
+    %block embed blockheader
     actorvar zorder  <fixed  
     cell+
     actorvar dead    <flag   \ if on, will be deleted at end of frame.
@@ -210,7 +216,8 @@ struct: %simple  drop %block sizeof  \ for particles and environments
     actorvar hid     <flag   
 drop #256 ;struct
 
-struct: %common  drop %simple sizeof
+struct: %common  
+    %simple embed commonheader
     actorvar rolename #12 +  <cstring  \ effectively 16 bytes
     actorvar attr            <hex      \ attribute flags
     actorvar ctype           <hex      \ collision flags
@@ -228,14 +235,15 @@ struct: %common  drop %simple sizeof
 drop #512 ;struct
 
 \ the remaining space is considered "volatile" and this is where roles should define their vars
-: volatilevars  %common 768 ;
+: volatilevars  %common #768 ;
 
 
 : system  0 block ;     \ kludge; redefined in more logical way below
 : global  field does> datatype.offset @ system + ;
 : \global  +  0 parse 2drop ;
 
-struct: %globals  drop %block sizeof
+struct: %globals  
+    %block embed blockheader
     cell global >stage       <fixed  \ current slew (block)
     cell global tool         <fixed  \ current tool  (block)
     cell global nextid       <fixed  \ next global ID (incremented by ONE)
@@ -248,18 +256,19 @@ struct: %globals  drop %block sizeof
     cell global (stage)      <fixed  \ for preserving in QUIT and RUN
 drop #128 ;struct
 
-: globals  %globals dup sizeof ;
+: globals  %globals extend ;
 
 : toolfield  ( size -- <name> )
     field does> @ tool @> + ;
 
-struct: %tool  drop %module sizeof
+struct: %tool  
+    %module embed moduleheader
     #32 toolfield starter  <cstring  
     #32 toolfield resumer  <cstring  
     cell toolfield >toolScene  <fixed
 drop #256 ;struct
 
-struct: %role  drop %module sizeof
+struct: %role  %module embed moduleheader
 ;struct
 
 
@@ -335,7 +344,8 @@ struct: %role  drop %module sizeof
 
 ( --== Constant storage ==-- )
 
-struct: %constant  drop %block sizeof
+struct: %constant
+    %block embed blockheader
     record kind
     record data
 ;struct
@@ -368,7 +378,8 @@ struct: %constant  drop %block sizeof
 
 ( --== Pic stuff ==-- )
 
-struct: %pic  drop %asset sizeof  
+struct: %pic
+    %asset embed assetheader
     record subsize
     record >coldata   \ user-defined byte-tables (4 of them)
     record >atrdata   \ user-defined byte-tables (4 of them)

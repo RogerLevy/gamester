@@ -61,7 +61,7 @@ previous
     datatype.size @ ;
 
 : sembed  ( struct size struct -- <name> )  ( adr -- adr+ofs )
-    dup >r sizeof create-field  r> third datatype.embedder ! ;
+    dup >r sizeof create-field  r> third node.last @ datatype.embedder ! ;
     
 : *struct  ( struct - adr )
     here swap sizeof /allot ;
@@ -69,7 +69,7 @@ previous
 : struct,  ( struct - )
     *struct drop ;
 
-: (.fields)  ( adr struct -- adr+ ) 
+: (.fields)  ( adr struct -- adr ) 
     each> ( adr field )
         
         normal  
@@ -77,12 +77,12 @@ previous
         bright
         
         ( field ) dup datatype.embedder @ ?dup if
-            ( adr field struct ) nip recurse drop
+            >r udup datatype.offset @ + r> recurse drop
         else
-            2dup dup datatype.size @ swap datatype.type @ datatype.inspector @ execute        
-        then
-        
-        datatype.size @ +
+            >r ( adr ) dup r@ datatype.offset @ + 
+            ( adr adr+ofs ) r@ datatype.size @ r@ datatype.type @ datatype.inspector @ execute
+            r> drop
+        then         
 ;
 
 : .fields ( adr struct - )
