@@ -72,10 +72,13 @@ previous
     *struct drop ;
 
 : (.fields)  ( adr struct -- adr ) 
-    each> ( adr field )
+    each> ( adr field ) cr
         
-        normal  
-            ( field ) dup body> >name ccount type space
+        normal
+            ." ________________"
+            get-xy nip 0 swap at-xy
+            ( field ) dup body> >name ccount type
+            get-xy nip #16 swap at-xy 
         bright
         
         ( field ) dup datatype.embedder @ ?dup if
@@ -100,7 +103,9 @@ previous
 : inspect-fixed   bounds ?do i @ dup if p. else i. then cell +loop ;
 : inspect-float   bounds ?do i sf@ f. ." e" cell +loop ; 
 : inspect-hex     bounds ?do i @ dup 0= if #5 attribute then ." $" h. normal cell +loop ; 
+: inspect-int     bounds ?do i @ dup 0= if #5 attribute then ." #" i. normal cell +loop ; 
 
+s" INTE" ' inspect-int fieldtype: <int
 s" HEXX" ' inspect-hex fieldtype: <hex
 s" ADDR" ' inspect-hex fieldtype: <adr
 s" ADDR" ' inspect-hex fieldtype: <addr

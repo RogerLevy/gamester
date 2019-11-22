@@ -34,6 +34,9 @@ mytilemap pic( overworld ) stage layer1 init-layer
 
 ( --== Create a game world to test out the map ==-- )
 
+: add-instance  ( -- <template> actor )
+    template ($)  stage instance dup as ;
+
 100 100 at
 add-instance myconid  named myboy  start
 

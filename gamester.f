@@ -368,7 +368,7 @@ struct: %simple  \ for particles and environments
     actorvar sy      <fixed  
     actorvar rtn     <fixed  
     actorvar >role   <fixed  
-    actorvar state#  <fixed  
+    actorvar state#  <int
     actorvar >pic    <fixed  
     actorvar sub#    <fixed  
     actorvar anim#   <fixed  
@@ -546,7 +546,7 @@ drop #384
 
 : state:  ( - <role> <name> ...code... ; ) ( - )
     >in @ ?state >in !
-    ' >body @ role ($) vtable @ + :noname swap .s !  
+    ' >body @ role ($) vtable @ + :noname swap !  
 ;
 
 : load-role  ( role - )
